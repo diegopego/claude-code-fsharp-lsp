@@ -115,6 +115,13 @@ transactionality.
 - **`.fsi` signature files: untested.** Whether rename reaches declarations there
   was never established. Either test it or say it is unknown — do not assume.
 - **Type providers: untested.**
+- **The conflict guard covers the file you named, not the others.** The tool sends
+  that file's text to the server and compares it again before writing, so a change
+  underneath it is caught (exit 5). The other files in a WorkspaceEdit were read by
+  the server itself, at a moment the tool cannot observe; they are re-read and
+  written without that comparison. Closing this properly needs the server's own
+  document versions, which FSAC does not report for files it opened on its own
+  initiative. In practice the window is the seconds of a single invocation.
 - **One FSAC per invocation**, so tens of seconds on a real solution. Acceptable
   here in a way it never was for queries: rename is rare, deliberate, and you are
   going to read the dry run anyway.
