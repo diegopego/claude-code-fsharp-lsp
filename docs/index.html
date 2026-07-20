@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="description" content="F# code intelligence for Claude Code: fsautocomplete behind the built-in LSP tool, plus a read-only query CLI for projects outside the current workspace.">
+<meta name="description" content="Claude Code's LSP tool does not speak F#. This plugin registers fsautocomplete for .fs/.fsi/.fsx, so goToDefinition, hover, findReferences and call hierarchy work.">
 <meta property="og:title" content="fsharp-lsp — F# code intelligence for Claude Code">
-<meta property="og:description" content="F# code intelligence for Claude Code: fsautocomplete behind the built-in LSP tool, plus a read-only query CLI for projects outside the current workspace.">
+<meta property="og:description" content="Claude Code's LSP tool does not speak F#. This plugin registers fsautocomplete for .fs/.fsi/.fsx, so goToDefinition, hover, findReferences and call hierarchy work.">
 <meta property="og:type" content="website">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>fsharp-lsp — F# code intelligence for Claude Code</title>
@@ -245,7 +245,6 @@
   /* Long commands wrap with a hanging indent rather than hiding behind a
      scrollbar — the reader must never scroll to see what was run. */
   .term-body .line { white-space: pre-wrap; padding-left: 4ch; text-indent: -4ch; }
-  .term-body .line[data-hidden="true"] { visibility: hidden; }
   .term-body.wraps .line { padding-left: 8ch; text-indent: -8ch; }
   .prompt { color: var(--term-accent); }
   .cmd    { color: var(--term-text); }
@@ -254,15 +253,6 @@
   .fail   { color: var(--term-red); }
   .amber  { color: var(--term-amber); }
   .path   { color: var(--term-accent); }
-  .caret {
-    display: inline-block;
-    width: 7px;
-    height: 15px;
-    vertical-align: -2px;
-    background: var(--term-accent);
-    animation: blink 1.05s steps(1) infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
 
   /* ── tutorial steps ───────────────────────────────── */
 
@@ -329,9 +319,8 @@
   }
   .copyrow[data-copied="true"] .label { color: var(--accent); }
   .note { font-size: 13px; color: var(--ink-faint); margin: 0; }
-  .pullquote + .note { margin-top: 20px; }
 
-  /* ── two parts ────────────────────────────────────── */
+  /* ── what ships ──────────────────────────────────── */
 
   .parts { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
   @media (max-width: 640px) { .parts { grid-template-columns: 1fr; } }
@@ -343,27 +332,6 @@
   }
   .part h3 { color: var(--ink); }
   .part p { font-size: 14px; margin: 0 0 12px; }
-  .caps {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 11.5px;
-  }
-  .caps li { border: 1px solid var(--rule); border-radius: 4px; padding: 2px 7px; color: var(--ink-soft); }
-
-  .pullquote { margin: 24px 0 0; padding: 4px 0 4px 20px; border-left: 2px solid var(--accent); }
-  .pullquote p { font-family: var(--mono); font-size: 15px; line-height: 1.6; color: var(--ink); margin: 0 0 8px; }
-  .pullquote cite {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    font-style: normal;
-    letter-spacing: 0.05em;
-    color: var(--ink-faint);
-  }
 
   /* ── callout ──────────────────────────────────────── */
 
@@ -377,21 +345,6 @@
   .callout h3 { color: var(--warn); margin-bottom: 8px; }
   .callout p { margin: 0; font-size: 14px; }
   .callout p + p { margin-top: 10px; }
-
-  /* ── limits ───────────────────────────────────────── */
-
-  .limits { list-style: none; margin: 0; padding: 0; }
-  .limits li {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 12px;
-    padding: 13px 0;
-    border-top: 1px solid var(--rule);
-    font-size: 14.5px;
-    color: var(--ink-soft);
-  }
-  .limits li:last-child { border-bottom: 1px solid var(--rule); }
-  .limits .mark { font-family: var(--mono); color: var(--ink-faint); font-size: 13px; }
 
   /* ── footer ───────────────────────────────────────── */
 
@@ -411,10 +364,6 @@
      between frames never get an IntersectionObserver callback, and the failure
      mode is content that stays invisible. */
 
-  @media (prefers-reduced-motion: reduce) {
-    .caret { animation: none; }
-  }
-
   /* ── small screens ────────────────────────────────── */
 
   @media (max-width: 700px) {
@@ -433,8 +382,6 @@
     .steps > li { grid-template-columns: 26px 1fr; gap: 12px; }
     .masthead .wrap { height: auto; padding-top: 9px; padding-bottom: 9px; }
     .masthead nav { gap: 14px; font-size: 11.5px; }
-    .pullquote { padding-left: 14px; }
-    .pullquote p { font-size: 14px; }
   }
 
   @media (max-width: 430px) {
@@ -447,9 +394,10 @@
   <div class="wrap">
     <a class="brand" href="#top">fsharp<span>-lsp</span></a>
     <nav>
-      <a href="#walkthrough">the loop</a>
+      <a href="#what" data-optional>what it is</a>
+      <a href="#refactor">refactoring</a>
       <a href="#install">install</a>
-      <a href="#shell" data-optional>cli</a>
+      <a href="#trouble" data-optional>trouble</a>
       <a href="https://github.com/diegopego/claude-code-fsharp-lsp">github</a>
     </nav>
   </div>
@@ -462,296 +410,175 @@
       <p class="tagline">Claude Code plugin · fsautocomplete · MIT</p>
       <h1>You ask in plain language. <em>Claude asks the compiler.</em></h1>
       <p class="lead">
-        F# code intelligence for Claude Code, so that “find every use of this before
-        I rename it” gets answered by fsautocomplete instead of by a text search.
+        Claude Code ships an <code>LSP</code> tool, but it does not speak F#. That
+        tool is generic — a socket with no server behind it until a plugin registers
+        one for your file extension. Nothing listens on <code>.fs</code> out of the
+        box. There is no official F# plugin. This is that plugin.
       </p>
 
       <div class="roles">
         <div class="role">
           <p class="who">You</p>
-          <p>Ask a question: <em>is anything still calling <code>quadruple</code>, or can I delete it?</em> No commands, no coordinates.</p>
+          <p>Ask a question: <em>where is <code>parseWire</code> used?</em> No commands, no coordinates.</p>
         </div>
         <div class="role">
           <p class="who">Claude</p>
-          <p>Finds the symbol's position, runs the query, reads the output, and acts on it.</p>
+          <p>Finds the symbol's position, queries fsautocomplete, and acts on the answer.</p>
         </div>
       </div>
 
       <p>
-        A line and column argument is Claude's problem, not yours — and
-        <strong>no editor is involved</strong>. The tool starts its own fsautocomplete
-        process and takes the project directory as an argument, so nothing needs to be
-        open in VS Code, Rider or anywhere else. Everything below was produced in a bare
-        shell.
+        Install it and <strong>nothing changes that you type</strong>. That is the
+        point, and it is why the plugin is easy to overlook: F# code intelligence
+        starts working, and Claude reaches for it on its own. What arrives is
+        <code>goToDefinition</code>, <code>hover</code>, <code>findReferences</code>,
+        <code>documentSymbol</code>, <code>workspaceSymbol</code>,
+        <code>goToImplementation</code> and call hierarchy, on <code>.fs</code>,
+        <code>.fsi</code> and <code>.fsx</code>.
       </p>
 
-      <blockquote class="pullquote">
-        <p>“Use whenever working with F# code — reading it, navigating it, or establishing a fact about it before a change. […] Also covers why a grep count is not a reference count.”</p>
-        <cite>— skills/fsharp-lsp-queries/SKILL.md, the instruction Claude reads</cite>
-      </blockquote>
-
-      <p class="note">
-        The plugin also installs a session-start hook that runs <code>doctor</code> on its
-        own, so a broken environment announces itself before it can waste your time.
-        Nobody types that one either.
-      </p>
+      <div class="callout">
+        <h3>⚠ Ionide in your editor does not carry over</h3>
+        <p>
+          The most common reason people assume they do not need this: F# already
+          works in their editor. It does — for the editor. Claude Code keeps its own
+          LSP client and its own server registry, and a VS Code extension registers
+          with VS Code. The two do not even share a server process: Ionide bundles
+          its own <code>fsautocomplete.dll</code>; this plugin runs the one on your
+          PATH. Here is this plugin disabled, with Ionide 7.31.1 running and healthy
+          on four live FSAC instances, asked for hover on a <code>.fs</code> file:
+        </p>
+        <div class="term">
+          <div class="term-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="term-title">plugin disabled, Ionide running</span>
+          </div>
+          <div class="term-body wraps">
+<div class="line"><span class="dim">LSP hover — Domain/Status.fs:189</span></div>
+<div class="line"><span class="fail">No LSP server available for file type: .fs</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section id="what">
     <div class="wrap">
       <p class="eyebrow">/// what this is</p>
-      <h2>Claude Code ships the socket. F# needs the server plugged in.</h2>
-
-      <p class="lead">
-        That tool is generic — a socket with no server behind it until a plugin
-        registers one for your file extension. Nothing listens on <code>.fs</code>
-        out of the box, so asking it for a definition returns an error, not an
-        answer. There is no official F# plugin. This is that plugin.
-      </p>
-
+      <h2>Three files, one job each.</h2>
       <p>
-        Which makes the first half below <strong>not an enhancement to something
-        that already worked</strong> — it is the wiring that makes hover, references
-        and call hierarchy exist for F# at all. The second half is a CLI for the two
-        questions that wiring structurally cannot answer.
+        Register the server, teach Claude to use it, and speak up when the
+        environment cannot run it.
       </p>
 
       <div class="parts">
         <div class="part">
-          <h3>The LSP wiring</h3>
-          <p>A small <code>.lsp.json</code> registering fsautocomplete for <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code>. One warm server per session, answers immediate. <strong>Your daily driver</strong> — this is what handles nearly everything.</p>
-          <ul class="caps">
-            <li>goToDefinition</li><li>hover</li><li>findReferences</li>
-            <li>documentSymbol</li><li>workspaceSymbol</li>
-            <li>goToImplementation</li><li>call hierarchy</li>
-          </ul>
+          <h3><code>.lsp.json</code></h3>
+          <p>Twenty-one lines registering fsautocomplete for <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code>. One warm server per session, answers immediate. You never invoke it.</p>
         </div>
         <div class="part">
-          <h3>The query CLI</h3>
-          <p>Drives its own FSAC process, so it takes the workspace root as an argument. Slower by design — a fresh server per call — and it exists for the gap the wiring cannot reach: <strong>any project on disk</strong>, not just the one you launched in.</p>
-          <ul class="caps">
-            <li>any project on disk</li><li>references</li>
-            <li>symbols</li><li>diagnostics</li><li>doctor</li>
-          </ul>
+          <h3>the skill</h3>
+          <p>Teaches Claude which operation answers which question, how to refactor with no rename available, and why a <code>grep</code> count is not a reference count.</p>
+        </div>
+        <div class="part">
+          <h3><code>check_fsharp_lsp.py</code></h3>
+          <p>Runs at session start, silent unless something is wrong. It exists for one failure that reports nothing at all — see <a href="#trouble">below</a>.</p>
         </div>
       </div>
 
-      <p class="note">
-        Why <strong>diagnostics</strong> is on that list at all: the language server
-        publishes compiler errors and warnings the whole time — the
-        <code>.lsp.json</code> above even sets <code>"diagnostics": true</code>.
-        Claude Code's <code>LSP</code> tool just has no operation to read them. The
-        information arrives and has no door out. This is the door — a narrow one.
-        <code>dotnet build</code> reports the same errors across <em>every</em> file
-        rather than one, and runs in any directory you can name, including the
-        out-of-workspace projects this CLI exists for. Reach for
-        <code>diagnostics</code> where a build is genuinely unavailable; prefer the
-        build otherwise.
-      </p>
-
-      <blockquote class="pullquote">
-        <p>“Ask it about a file outside that root and it answers <em>Couldn't find &lt;file&gt; in LoadedProjects</em>, with no way to point it elsewhere. This tool takes the workspace root as an argument, so it can answer questions about any project on disk.”</p>
-        <cite>— fsharp_lsp.py --help</cite>
-      </blockquote>
     </div>
   </section>
 
-  <section id="walkthrough">
+  <section id="refactor">
     <div class="wrap">
-      <p class="eyebrow">/// behind the scenes</p>
+      <p class="eyebrow">/// the loop</p>
       <h2>One rename, from question to proof.</h2>
       <p>
-        This is the whole loop Claude runs for a request like <em>“rename
-        <code>double</code> to <code>twice</code>”</em> — and it is also exactly what you
-        would type to do it yourself. Every command and every line of output below was
-        run against a real F# project; nothing is illustrative.
-      </p>
-      <p class="note">
-        Setup: a copy of this repository's test project, with <code>fsharp_lsp.py</code>
-        copied in beside it, which is how the CLI is meant to be used. Two files matter —
-        <code>Library.fs</code> defines <code>double</code>, and <code>Consumer.fs</code>
-        calls it.
+        There is no rename operation. Claude Code's <code>LSP</code> tool is entirely
+        reads — nine operations, not one of them a write. That sounds like a gap, and
+        in F# it very nearly is not, because the compiler closes it at the end.
       </p>
 
       <ol class="steps">
         <li>
           <div class="step-body">
-            <h3>Is the environment actually usable?</h3>
-            <p>
-              Nothing else can work if the language server cannot start, and its failure is
-              silent — the built-in tool simply hangs. So the loop opens by executing
-              fsautocomplete rather than trusting that it is installed.
-            </p>
-            <div class="term">
-              <div class="term-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">doctor</span>
-              </div>
-              <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 fsharp_lsp.py doctor SampleProject</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    python 3.10</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    fsautocomplete 0.83.0  (PATH: /home/diego/.dotnet/tools/fsautocomplete)</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    dotnet sdk 10.0.110</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    1 restored project(s) under SampleProject</span></div>
-              </div>
-            </div>
-            <p class="takeaway">Four checks, all green, including that the project directory really holds a restored <code>.fsproj</code>. Any of them failing here would otherwise surface later as a hang with no message.</p>
-          </div>
-        </li>
-
-        <li>
-          <div class="step-body">
-            <h3>Where does the symbol live?</h3>
-            <p>
-              To ask about a symbol you have to point at it, and to point at it you need its
-              line. <code>symbols</code> lists everything a file defines, with the line each
-              one is on — no editor, no scrolling, no guessing.
-            </p>
-            <div class="term">
-              <div class="term-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">symbols</span>
-              </div>
-              <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 fsharp_lsp.py symbols SampleProject SampleProject/Library.fs</span></div>
-<div class="line"><span class="path">3 top-level symbol(s):</span></div>
-<div class="line"><span class="dim">  SampleProject.Library  (line 1)</span></div>
-<div class="line"><span class="dim">  answer  (line 4)</span></div>
-<div class="line"><span class="dim">  double  (line 7)</span></div>
-              </div>
-            </div>
-            <p class="takeaway"><code>double</code> is on line 7. The column is where the name itself starts — for a top-level binding that is column 5, immediately after <code>let&nbsp;</code>. That gives the <code>7 5</code> the next step needs.</p>
-          </div>
-        </li>
-
-        <li>
-          <div class="step-body">
             <h3>Every place it is used</h3>
             <p>
-              Now the real question. The answer comes from the compiler's own view of the
-              program, so it knows the difference between the symbol and a word that merely
-              looks like it.
+              <code>findReferences</code> at the declaration. The answer is the
+              compiler's, so it crosses project boundaries — a symbol in the main
+              project shows its uses in the test project too — and it excludes the
+              comments, strings and longer identifiers a text search would have
+              swept in.
             </p>
             <div class="term">
               <div class="term-bar">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">references</span>
+                <span class="term-title">findReferences — Domain/Status.fs:86:9</span>
               </div>
               <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 fsharp_lsp.py references SampleProject SampleProject/Library.fs 7 5</span></div>
-<div class="line"><span class="path">WITH config: 3 reference(s) in 2 file(s)</span></div>
-<div class="line"><span class="dim">  Consumer.fs: 2</span></div>
-<div class="line"><span class="ok">    5:26</span></div>
-<div class="line"><span class="ok">    5:34</span></div>
-<div class="line"><span class="dim">  Library.fs: 1</span></div>
-<div class="line"><span class="ok">    7:5</span></div>
+<div class="line"><span class="path">Found 3 references across 3 files:</span></div>
+<div class="line"><span class="dim">  Domain/Status.fs</span></div>
+<div class="line"><span class="ok">    Line 86:9</span></div>
+<div class="line"><span class="dim">  Web/Handlers.fs</span></div>
+<div class="line"><span class="ok">    Line 138:38</span></div>
+<div class="line"><span class="dim">  Tests/Tests.fs</span></div>
+<div class="line"><span class="ok">    Line 277:43</span></div>
               </div>
             </div>
-            <p class="takeaway">
-              Three positions: the declaration itself at <code>Library.fs 7:5</code> — a rename
-              has to touch that too — plus two calls in <code>Consumer.fs</code>, on
-              <strong>the same line</strong>, at columns 26 and 34. That line reads
-              <code>let quadruple (x: int) = double (double x)</code>. A search-and-replace
-              counts that line once; the compiler counts it twice.
+            <p class="takeaway">Exact to the character. Column 38 of <code>Handlers.fs</code> line 138 is where <code>parseWire</code> starts, not where the line does.</p>
+          </div>
+        </li>
+
+        <li>
+          <div class="step-body">
+            <h3>Edit each site</h3>
+            <p>
+              The positions were the hard part of the job and you already have them.
+              This step is mechanical, and it is the one a real
+              <code>textDocument/rename</code> would have done atomically — the only
+              thing actually lost by not having one.
             </p>
           </div>
         </li>
 
         <li>
           <div class="step-body">
-            <h3>Make the edits</h3>
+            <h3>Ask again, and check the old name is gone</h3>
             <p>
-              This step is not the tool's job. <code>fsharp_lsp.py</code> is read-only by
-              design — it hands over the positions and the edits stay yours, or Claude's.
-              Two details matter: apply them <strong>right to left</strong> within a line, so
-              replacing the first call does not shift the column of the second, and verify
-              each position holds the text you expected before touching it.
-            </p>
-            <div class="term">
-              <div class="term-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">after the edits</span>
-              </div>
-              <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">grep -n twice SampleProject/Library.fs SampleProject/Consumer.fs</span></div>
-<div class="line"><span class="amber">SampleProject/Library.fs:6:</span><span class="dim">/// Referenced twice from Consumer, in one expression.</span></div>
-<div class="line"><span class="path">SampleProject/Library.fs:7:</span><span class="dim">let twice (x: int) = x * 2</span></div>
-<div class="line"><span class="path">SampleProject/Consumer.fs:5:</span><span class="dim">let quadruple (x: int) = twice (twice x)</span></div>
-<div class="line"><span class="amber">SampleProject/Consumer.fs:7:</span><span class="dim">let twiceTheAnswer = answer * 2</span></div>
-              </div>
-            </div>
-            <p class="takeaway">
-              Both calls on line 5 were renamed. And notice grep making the case for the whole
-              exercise: two of these four hits are noise — a doc comment that happens to
-              contain the word “twice”, and an unrelated binding called
-              <code>twiceTheAnswer</code>. Neither is the symbol.
+              Same position, same question. A symbol that still exists always returns
+              at least its own declaration, so <em>one</em> reference means the
+              declaration and nothing else — which is also how you spot dead code.
             </p>
           </div>
         </li>
 
         <li>
           <div class="step-body">
-            <h3>Prove nothing broke</h3>
+            <h3>Let the compiler have the last word</h3>
             <p>
-              A rename that misses one call site still parses; it fails at the type checker.
-              So the loop closes by asking the compiler directly, which is something the
-              built-in <code>LSP</code> tool cannot do at all.
+              This is the step that makes the missing rename tolerable. A site you
+              missed is <code>FS0039</code> — <em>the value or constructor is not
+              defined</em> — a hard error, with no configuration required to make it
+              one. It cannot pass quietly.
             </p>
             <div class="term">
               <div class="term-bar">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">diagnostics</span>
+                <span class="term-title">the last word</span>
               </div>
-              <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 fsharp_lsp.py diagnostics SampleProject SampleProject/Consumer.fs</span></div>
-<div class="line"><span class="ok">No diagnostics.</span></div>
-              </div>
-            </div>
-            <p class="takeaway">Clean. Had a call site been missed, this would name it as <code>The value or constructor 'double' is not defined</code>, with its line. Note <em>which</em> file was asked about: <code>Consumer.fs</code>, the one that consumes the rename, not <code>Library.fs</code>, where it was made. <code>diagnostics</code> answers for one file, and F#'s compilation order is semantic — an edit breaks the files <em>below</em> it, not itself. On a project with more than two files, <code>dotnet build</code> is what closes this loop.</p>
-          </div>
-        </li>
-
-        <li>
-          <div class="step-body">
-            <h3>Confirm the loop closed</h3>
-            <p>
-              Ask the same question again, at the same position, and check that the old name
-              is gone from the project entirely.
-            </p>
-            <div class="term">
-              <div class="term-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">references, again</span>
-              </div>
-              <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 fsharp_lsp.py references SampleProject SampleProject/Library.fs 7 5</span></div>
-<div class="line"><span class="path">WITH config: 3 reference(s) in 2 file(s)</span></div>
-<div class="line"><span class="dim">  Consumer.fs: 2</span></div>
-<div class="line"><span class="ok">    5:26</span></div>
-<div class="line"><span class="ok">    5:33</span></div>
-<div class="line"><span class="dim">  Library.fs: 1</span></div>
-<div class="line"><span class="ok">    7:5</span></div>
-<div class="line"> </div>
-<div class="line"><span class="prompt">$</span> <span class="cmd">grep -rn double SampleProject --include=*.fs ; echo $?</span></div>
-<div class="line"><span class="dim">1</span></div>
+              <div class="term-body wraps">
+<div class="line"><span class="prompt">$</span> <span class="cmd">dotnet build --no-incremental</span></div>
+<div class="line"><span class="fail">Handlers.fs(138,38): error FS0039: The value or constructor 'parseWire' is not defined.</span></div>
               </div>
             </div>
-            <p class="takeaway">
-              Still three references — and the second one moved from column
-              <strong>34 to 33</strong>, because <code>twice</code> is one character shorter than
-              <code>double</code>. These are live positions computed from the current source,
-              not remembered from the previous run. grep exits <code>1</code>: the old name
-              appears nowhere, not even in a comment.
-            </p>
+            <p class="takeaway"><code>--no-incremental</code> is not decoration. A repeat build re-reports nothing, so warnings you have not fixed can look as though they went away. An error also suppresses the warnings in every file compiled after it, since F# stops there.</p>
           </div>
         </li>
       </ol>
 
       <p class="note">
-        The same loop finds dead code. Run step 3 against <code>quadruple</code> and it
-        returns <em>1 reference in 1 file</em>, at the position you pointed to — the
-        declaration and nothing else, which means nothing calls it.
+        Manual renaming is far safer in F# than in a dynamically typed language, and
+        this is why: the failure is loud, immediate, and points at the line.
       </p>
     </div>
   </section>
@@ -759,13 +586,13 @@
   <section id="install">
     <div class="wrap">
       <p class="eyebrow">/// install</p>
-      <h2>Three steps to a working setup.</h2>
+      <h2>Two steps to a working setup.</h2>
 
       <ol class="steps">
         <li>
           <div class="step-body">
             <h3>Install the language server</h3>
-            <p>fsautocomplete is a .NET global tool. Everything else depends on it.</p>
+            <p>fsautocomplete is a .NET global tool. Everything depends on it.</p>
             <div class="install">
               <button class="copyrow" data-copy="dotnet tool install -g fsautocomplete">
                 <span class="cmdtext">dotnet tool install -g fsautocomplete</span>
@@ -782,14 +609,13 @@
 <div class="line"><span class="dim">0.83.0+96fabed8e9181b74e19e211717626c204c32b2c2</span></div>
               </div>
             </div>
-            <p class="takeaway">If that prints nothing, stop here and go to <a href="#trouble">troubleshooting</a> — every later step depends on this one, and its failure is silent.</p>
+            <p class="takeaway">Verify rather than trust: the check that matters is whether the binary <em>runs</em>, not whether the install reported success.</p>
           </div>
         </li>
 
         <li>
           <div class="step-body">
             <h3>Install the plugin</h3>
-            <p>Run both lines inside Claude Code. Click either to copy it.</p>
             <div class="install">
               <button class="copyrow" data-copy="/plugin marketplace add diegopego/claude-code-fsharp-lsp">
                 <span class="cmdtext">/plugin marketplace add diegopego/claude-code-fsharp-lsp</span>
@@ -800,112 +626,69 @@
                 <span class="label">COPY</span>
               </button>
             </div>
-            <p class="takeaway">This is all you need for navigation inside the project Claude Code was launched in. Step 3 is for the projects it cannot reach.</p>
-          </div>
-        </li>
-
-        <li>
-          <div class="step-body">
-            <h3>Copy the CLI into the repository you want to query</h3>
-            <p><code>tools/fsharp_lsp.py</code> is a single file with no dependencies beyond Python 3.9+ — standard library only, nothing to pip install. That is the setup used throughout the walkthrough above.</p>
-            <div class="term">
-              <div class="term-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">the four commands</span>
-              </div>
-              <div class="term-body">
-<div class="line"><span class="cmd">fsharp_lsp.py doctor       [PROJECT] [--hook]</span></div>
-<div class="line"><span class="cmd">fsharp_lsp.py references   PROJECT FILE LINE COL [--no-config]</span></div>
-<div class="line"><span class="cmd">fsharp_lsp.py diagnostics  PROJECT FILE [--verbose]</span></div>
-<div class="line"><span class="cmd">fsharp_lsp.py symbols      PROJECT FILE</span></div>
-              </div>
-            </div>
+            <p class="takeaway">Then restart. Disabling a plugin drops its server immediately, but enabling one does not bring it back until the session restarts — a difference worth knowing before you conclude the install failed.</p>
           </div>
         </li>
       </ol>
-    </div>
-  </section>
 
-  <section id="shell">
-    <div class="wrap">
-      <p class="eyebrow">/// driving it yourself</p>
-      <h2>The two arguments people get wrong.</h2>
-
-      <h3><code>PROJECT</code> — the directory FSAC loads</h3>
-      <p>
-        The one holding the <code>.fsproj</code>, which in most solutions is <strong>not</strong>
-        the repository root. Get this wrong and the server loads nothing, then answers
-        confidently about a workspace it never opened.
-      </p>
-
-      <h3><code>FILE</code> — a path from where you are standing</h3>
-      <p>
-        Not relative to <code>PROJECT</code>. This is the mistake everyone makes first,
-        including while this page was being written:
-      </p>
-      <div class="term">
-        <div class="term-bar">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="term-title">FILE resolved against the wrong root</span>
-        </div>
-        <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/fsharp_lsp.py references tests/fixtures/SampleProject Library.fs 7 5</span></div>
-<div class="line"><span class="fail">ERROR: [Errno 2] No such file or directory: 'Library.fs'</span></div>
-<div class="line"><span class="prompt">$</span> <span class="cmd">echo $?</span></div>
-<div class="line"><span class="dim">2</span></div>
-        </div>
+      <div class="callout">
+        <h3>⚠ The failure almost everyone hits</h3>
+        <p><strong><code>~/.dotnet/tools</code> must be on the PATH of the process that launches Claude Code.</strong> A login shell that has it is not enough if your editor or launcher does not inherit that PATH — which is why step 1 verifies the binary rather than trusting the install.</p>
       </div>
-      <p class="takeaway">Pass the file the way you would to <code>cat</code>, and the two arguments stop looking redundant: <code>PROJECT</code> tells the server what to load, <code>FILE</code> tells it what you are pointing at.</p>
-
-      <h3>Point one line too high and you get silence</h3>
-      <p>
-        Line 6 of <code>Library.fs</code> is the doc comment above <code>double</code>. There is
-        no symbol there, so the answer is empty:
-      </p>
-      <div class="term">
-        <div class="term-bar">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="term-title">off by one, onto the comment</span>
-        </div>
-        <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/fsharp_lsp.py references tests/fixtures/SampleProject tests/fixtures/SampleProject/Library.fs 6 5</span></div>
-<div class="line"><span class="path">WITH config: 0 reference(s) in 0 file(s)</span></div>
-<div class="line"><span class="prompt">$</span> <span class="cmd">echo $?</span></div>
-<div class="line"><span class="amber">1</span></div>
-        </div>
-      </div>
-      <p class="takeaway">
-        <strong>Zero references means the position missed, and the exit code says so.</strong>
-        The query includes the declaration, so a real symbol always returns at least itself —
-        even dead code comes back as <em>1 reference</em>. An empty answer is never “searched
-        and found none”; it is a comment, a blank line or the wrong column, and it exits
-        <code>1</code>.
-      </p>
-
-      <h3>Wiring it into a script</h3>
-      <p>
-        Exit codes are <code>0</code> ok, <code>1</code> nothing found, <code>2</code> LSP or
-        environment error — so a missed position fails a script rather than passing quietly
-        through it. If fsautocomplete lives somewhere unusual,
-        point at it with <code>FSAC_PATH</code> rather than reordering your <code>PATH</code>.
-        Each invocation starts a fresh server and loads the whole MSBuild graph, which is why
-        it can never serve a stale project graph — and why you should expect tens of seconds on
-        a real solution rather than suspect a hang. That cost tracks the size of the project
-        graph, not the difficulty of the question, so nothing here belongs in an interactive
-        loop.
-      </p>
     </div>
   </section>
 
   <section id="trouble">
     <div class="wrap">
       <p class="eyebrow">/// troubleshooting</p>
-      <h2>When it hangs, run doctor.</h2>
+      <h2>Three failures. Only one of them is silent.</h2>
       <p>
-        A hanging or silent <code>LSP</code> tool is almost always one of three things, and
-        <code>doctor</code> checks all three by executing fsautocomplete rather than merely
-        looking for it — the difference between a diagnosis and a hang. Here it is against a
-        deliberately broken install:
+        Read the message before reaching for anything. Two of the three say what is
+        wrong, and running a health check on them wastes a minute.
+      </p>
+
+      <div class="term">
+        <div class="term-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="term-title">what you might see</span>
+        </div>
+        <div class="term-body wraps">
+<div class="line"><span class="fail">No LSP server available for file type: .fs</span></div>
+<div class="line"><span class="dim">  → no server registered. The plugin is not installed, or not enabled.</span></div>
+<div class="line"><span class="amber">Couldn't find &lt;file&gt; in LoadedProjects</span></div>
+<div class="line"><span class="dim">  → a server IS running. That file's project is outside the directory</span></div>
+<div class="line"><span class="dim">    Claude Code was launched in. Open a session there.</span></div>
+<div class="line"><span class="dim">(a hang, or silence)</span></div>
+<div class="line"><span class="dim">  → registered, but the binary will not start. Almost always PATH.</span></div>
+<div class="line"><span class="dim">    This is the one the health check exists for.</span></div>
+        </div>
+      </div>
+
+      <p>
+        The third reports nothing because the server dies before the LSP handshake
+        completes, so the tool waits rather than failing. The plugin runs
+        <code>check_fsharp_lsp.py</code> at every session start to catch it, and it prints nothing
+        unless something is wrong. Run by hand it says what it found — this is a
+        working install, with a project directory passed as the optional argument:
+      </p>
+
+      <div class="term">
+        <div class="term-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="term-title">a healthy install</span>
+        </div>
+        <div class="term-body wraps">
+<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/check_fsharp_lsp.py ~/src/orderboard</span></div>
+<div class="line"><span class="ok">  ok</span><span class="dim">    python 3.10</span></div>
+<div class="line"><span class="ok">  ok</span><span class="dim">    fsautocomplete 0.83.0  (/home/you/.dotnet/tools/fsautocomplete)</span></div>
+<div class="line"><span class="ok">  ok</span><span class="dim">    dotnet sdk 10.0.110</span></div>
+<div class="line"><span class="ok">  ok</span><span class="dim">    2 restored project(s) under /home/you/src/orderboard</span></div>
+        </div>
+      </div>
+
+      <p>
+        And against a broken one — the binary is installed here, it is simply not on
+        PATH:
       </p>
 
       <div class="term">
@@ -914,59 +697,24 @@
           <span class="term-title">a broken install</span>
         </div>
         <div class="term-body wraps">
-<div class="line"><span class="prompt">$</span> <span class="cmd">FSAC_PATH=/nonexistent/fsautocomplete python3 tools/fsharp_lsp.py doctor tests/fixtures/SampleProject</span></div>
-<div class="line"><span class="fail">  FAIL</span><span class="dim">  fsautocomplete not found at /nonexistent/fsautocomplete (from FSAC_PATH). Install it with 'dotnet tool install -g fsautocomplete', put the install directory on PATH, or set FSAC_PATH to the binary.</span></div>
+<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/check_fsharp_lsp.py</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    python 3.10</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    dotnet sdk 10.0.110</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    1 restored project(s) under tests/fixtures/SampleProject</span></div>
+<div class="line"><span class="fail">  FAIL  fsautocomplete is not on PATH. Install it with 'dotnet tool install -g fsautocomplete', then make sure the global tools directory (~/.dotnet/tools on Linux and macOS) is on the PATH of the process that launches Claude Code. A login shell rc file is not always enough, and that gap is the most common cause of this.</span></div>
 <div class="line"><span class="prompt">$</span> <span class="cmd">echo $?</span></div>
 <div class="line"><span class="dim">2</span></div>
         </div>
       </div>
-      <p class="note">It reports every check, not just the first failure — one run tells you the whole story, and the message names the fix.</p>
-
-      <div class="callout">
-        <h3>⚠ The failure almost everyone hits</h3>
-        <p><strong><code>~/.dotnet/tools</code> must be on the PATH of the process that launches Claude Code.</strong> A login shell that has it is not enough if your editor or launcher does not inherit that PATH — which is why install step 1 verifies the binary rather than trusting the install.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="limits">
-    <div class="wrap">
-      <p class="eyebrow">/// what it will not do</p>
-      <h2>Read-only, for now.</h2>
-      <ul class="limits">
-        <li>
-          <span class="mark">✗</span>
-          <span><strong>It cannot write.</strong> No rename, no code actions, no formatting. A <code>rename</code> was built and worked, but it ran into enough open issues that it was deferred to a future version rather than shipped half-trusted; the code is still in the file, commented out, with notes on what it did. Until then the tool hands you the positions and step 4 stays yours. Formatting is Fantomas's job either way.</span>
-        </li>
-        <li>
-          <span class="mark">?</span>
-          <span><strong><code>.fsi</code> signature files and type providers are untested.</strong></span>
-        </li>
-        <li>
-          <span class="mark">λ</span>
-          <span><strong>It is F#-only.</strong> The <code>languageId</code> is fixed; this is not a general LSP client.</span>
-        </li>
-        <li>
-          <span class="mark">⏱</span>
-          <span><strong>One server per CLI invocation.</strong> For casual navigation inside the current workspace, the plugin's warm server is faster.</span>
-        </li>
-      </ul>
-
-      <div class="term">
-        <div class="term-bar">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="term-title">verified</span>
-        </div>
-        <div class="term-body">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 -m pytest -q</span></div>
-<div class="line"><span class="dim">.................................                                        [100%]</span></div>
-<div class="line"><span class="ok">33 passed</span><span class="dim">, 4 deselected in 27.64s</span></div>
-        </div>
-      </div>
-      <p class="note">Unit tests drive a scripted fake LSP server over real JSON-RPC framing — no .NET needed. The 4 deselected are the integration tests, which drive real fsautocomplete against the project used throughout this page.</p>
+      <p class="note">
+        The binary is installed in that run — it is simply not on PATH, and the check
+        refuses to be reassured by finding it elsewhere. Claude Code launches the
+        server as a bare command, so a copy the shell cannot resolve is a copy the
+        server cannot start. It reports every check rather than stopping at the first
+        failure, and it <em>executes</em> fsautocomplete rather than testing for a
+        file, because a binary that exists but dies on startup produces the same
+        silent hang. Pass a project directory as an argument and it also checks that
+        the directory really holds a restored <code>.fsproj</code>.
+      </p>
     </div>
   </section>
 

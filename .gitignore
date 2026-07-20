@@ -2,9 +2,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# .NET build output from the test fixture project
-[Bb]in/
-[Oo]bj/
 
 # Internal working documents — machine paths, private project names,
 # and notes written for a private audience. Kept locally, never committed.

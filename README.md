@@ -2,15 +2,26 @@
 
 [![tests](https://github.com/diegopego/claude-code-fsharp-lsp/actions/workflows/tests.yml/badge.svg)](https://github.com/diegopego/claude-code-fsharp-lsp/actions/workflows/tests.yml)
 
-F# code intelligence for [Claude Code](https://claude.com/claude-code), in two parts:
+Claude Code ships an `LSP` tool, but it does not speak F#. That tool is generic —
+it has code intelligence for a language only where a plugin has registered a
+server for that extension, and nothing listens on `.fs` out of the box. There is
+no official F# plugin. This is that plugin.
 
-1. **An LSP plugin** — wires [fsautocomplete](https://github.com/ionide/FsAutoComplete)
-   (FSAC) into Claude Code's built-in `LSP` tool, so `goToDefinition`, `hover`,
-   `findReferences`, `documentSymbol` and call hierarchy work on `.fs`, `.fsi` and
-   `.fsx` files. There is no official F# plugin; this is that wiring.
-2. **A read-only query CLI** — `tools/fsharp_lsp.py`, which drives its own FSAC
-   process to answer questions the built-in tool cannot: anything about a project
-   outside the current workspace, and compiler diagnostics.
+Installing it makes `goToDefinition`, `hover`, `findReferences`, `documentSymbol`,
+`workspaceSymbol`, `goToImplementation` and call hierarchy work on `.fs`, `.fsi`
+and `.fsx`, served by [fsautocomplete](https://github.com/ionide/FsAutoComplete)
+(FSAC).
+
+> **Ionide in your editor does not carry over.** Claude Code keeps its own LSP
+> client and its own server registry; a VS Code extension registers with VS Code.
+> The two even drive different installations of FSAC — Ionide bundles its own.
+> Verified by disabling this plugin with Ionide 7.31.1 running and healthy, four
+> live FSAC instances serving the editor, and asking Claude Code for hover on a
+> `.fs` file:
+>
+> ```
+> No LSP server available for file type: .fs
+> ```
 
 ## Prerequisites
 
@@ -27,73 +38,130 @@ not inherit that PATH. Verify with:
 fsautocomplete --version
 ```
 
-Python 3.9+ is needed for the CLI (standard library only — nothing to pip install).
+Python 3.9+ is used by the session-start health check (standard library only —
+nothing to pip install). No particular .NET SDK version is required: if
+`dotnet tool install` worked, yours is fine.
 
-## Install the plugin
+## Install
 
 ```
 /plugin marketplace add diegopego/claude-code-fsharp-lsp
 /plugin install fsharp-lsp@claude-code-fsharp-lsp
 ```
 
-## Use the CLI
+## What changes after you install
 
-Copy `tools/fsharp_lsp.py` into whatever repository you want to query.
+Nothing you type. That is the point, and it is why the plugin is easy to
+overlook: F# code intelligence simply starts working, and Claude reaches for it
+on its own. Ask in plain language —
+
+> where is `advance` used?
+>
+> what type does `parseWire` return?
+>
+> who calls this function?
+
+— and Claude answers from the compiler rather than from a text search. You never
+name a line, a column, or a tool.
+
+**To confirm it took**, open a session in an F# project and ask Claude for hover
+on any `.fs` symbol. A type signature means it is live. See
+[When F# is not working](#when-f-is-not-working) for what the failures look like.
+
+## What ships
+
+| file | what it does |
+|---|---|
+| `.lsp.json` | registers `fsautocomplete` for `.fs`, `.fsi`, `.fsx`. This is the plugin |
+| `skills/fsharp-code-intelligence/` | teaches Claude which operation answers which question, and why a `grep` count is not a reference count |
+| `tools/check_fsharp_lsp.py` | health check, run automatically at session start |
+
+## Refactoring
+
+The `LSP` tool's operations are all reads — there is no rename. The workable
+substitute, and what the skill teaches Claude to do:
+
+1. `findReferences` at the declaration, giving every use site as `line:column`,
+   grouped by file and crossing project boundaries.
+2. Edit each site. The positions are exact to the character.
+3. `findReferences` again to confirm the old name is gone.
+4. Build. In F# a missed site is `FS0039` — *the value or constructor is not
+   defined* — a hard error with no configuration required, so the compiler
+   catches whatever step 3 missed.
+
+That last step is why manual renaming is far safer in F# than in a dynamically
+typed language: the failure is loud.
+
+## Diagnostics
+
+The server publishes compiler errors and warnings continuously, but Claude Code's
+`LSP` tool has no operation to read them. For "did my edit break anything", build:
 
 ```bash
-python3 tools/fsharp_lsp.py doctor      [PROJECT]
-python3 tools/fsharp_lsp.py references  PROJECT FILE LINE COL [--no-config]
-python3 tools/fsharp_lsp.py diagnostics PROJECT FILE [--verbose]
-python3 tools/fsharp_lsp.py symbols     PROJECT FILE
+dotnet build --no-incremental
 ```
 
-**Start with `doctor`.** It checks that `fsautocomplete` is not merely installed but actually
-runs, reports which of `FSAC_PATH`, your `PATH` or the default location supplied it, and —
-given a `PROJECT` — that the directory really holds a restored `.fsproj`. Each of those
-failures is otherwise silent: when the server cannot start, Claude Code's built-in `LSP` tool
-hangs rather than reporting anything.
+`--no-incremental` matters more than it looks. A repeat build re-reports nothing,
+so warnings you have not fixed can appear to have gone away. An error also
+suppresses the warnings in every file compiled after it, since F# stops there.
 
-It also reports your installed .NET SDKs. That one is never a failure — if
-`dotnet tool install -g fsautocomplete` worked, your SDK is fine — it is there so that
-**if you do open an issue, paste the whole `doctor` output**, and the version questions are
-already answered.
+## When F# is not working
 
-The plugin also runs `doctor` at the start of every session. It prints nothing unless
-something is wrong.
+Three distinct failures, and only one is silent. Read the message before reaching
+for anything:
 
-`references` prints the position of every hit as `line:column`, grouped under its file
-and preceded by the per-file count — the compiler's answer to where a rename would have
-to touch, for a project the built-in tool cannot load.
+| what you see | what it means |
+|---|---|
+| `No LSP server available for file type: .fs` | no server is registered — the plugin is not installed or not enabled |
+| `Couldn't find <file> in LoadedProjects` | a server **is** running; that file belongs to a project outside the directory Claude Code was launched in. Open a session there |
+| a hang, or silence | the server is registered but the binary will not start — almost always the PATH problem above |
 
-`PROJECT` is the directory FSAC loads as the workspace root — the one holding the
-`.fsproj`, which is often not the repository root. Positions are **1-based**, as an
-editor reports them. Exit codes: `0` ok, `1` nothing found, `2` LSP or environment
-error. If FSAC lives somewhere unusual, set `FSAC_PATH`.
+Only the third is silent, and the plugin runs its health check at every session
+start to catch it — printing nothing unless something is wrong. To ask the same
+question yourself, no plugin file needed:
 
-Expect 2–6s warm, up to ~40s on a cold project — FSAC loads the whole MSBuild graph
-on startup.
+```bash
+fsautocomplete --version
+```
 
-## What it will not do
+That is the entire test. Claude Code launches the server as a bare command, so if
+your shell resolves it, so will Claude Code; if `command not found`, that is the
+problem and the fix is the PATH note above. Run it in the same environment that
+launches Claude Code — a terminal that works proves nothing about an editor
+launched from a desktop menu.
 
-- **It cannot write.** No rename, no code actions, no formatting. The rename and
-  code-action paths were built and verified, then deliberately switched off; they
-  remain in the file, commented out, with notes on what they did. Formatting is
-  Fantomas's job and needs none of this machinery.
-- **`.fsi` signature files and type providers are untested.**
-- **It is F#-only.** The `languageId` is fixed; this is not a general LSP client.
-- **One server per invocation.** For casual navigation the built-in tool's warm
-  server is faster.
+The plugin's check adds only two things: it can also verify that a project
+directory holds a restored `.fsproj`, and it reports your .NET SDKs so that **if
+you open an issue, pasting its output** answers the version questions up front.
+
+```bash
+python3 ~/.claude/plugins/cache/claude-code-fsharp-lsp/fsharp-lsp/*/tools/check_fsharp_lsp.py [PROJECT]
+```
+
+`PROJECT` is the directory holding the `.fsproj`, which is often not the repo root.
 
 ## Tests
 
 ```bash
-python3 -m pytest                  # unit tests, seconds — no .NET needed
-python3 -m pytest -m integration   # real fsautocomplete, needs the .NET SDK
+python3 -m pytest
 ```
 
-Unit tests drive a scripted fake LSP server (`tests/fake_fsac.py`) over real
-JSON-RPC framing. Integration tests drive real FSAC against a small F# project in
-`tests/fixtures/SampleProject`.
+About a second, no .NET needed. `tests/fake_fsac.py` stands in for the binary so
+the health check can be tested against a healthy install, a missing one and a
+present-but-broken one.
+
+## Names, disambiguated
+
+Five near-identical names orbit this project, and `/plugin install
+fsharp-lsp@claude-code-fsharp-lsp` puts two of them in one line.
+
+| name | what it is |
+|---|---|
+| `claude-code-fsharp-lsp` | this repository, and the marketplace you add |
+| `fsharp-lsp` | the plugin you install |
+| `fsharp-code-intelligence` | the skill inside it |
+| `fsautocomplete` / FSAC | the F# language server. Not ours — [Ionide's](https://github.com/ionide/FsAutoComplete) |
+| Ionide | the VS Code extension. Also not ours, and it does not carry over |
 
 ## License
 

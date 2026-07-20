@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/tools/fsharp_lsp.py\" doctor --hook",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/tools/check_fsharp_lsp.py\" --hook",
             "timeout": 10
           }
         ]

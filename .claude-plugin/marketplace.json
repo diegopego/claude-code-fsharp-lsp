@@ -10,7 +10,7 @@
     {
       "name": "fsharp-lsp",
       "source": "./",
-      "description": "F# code intelligence (fsautocomplete/FSAC) for the Claude Code LSP tool: .fs/.fsi/.fsx, plus a read-only query CLI.",
+      "description": "Registers fsautocomplete (FSAC) for .fs/.fsi/.fsx, so Claude Code's LSP tool works on F#: goToDefinition, hover, findReferences, call hierarchy. There is no official F# plugin; this is it.",
       "category": "development",
       "license": "MIT",
       "keywords": ["fsharp", "dotnet", "lsp", "fsautocomplete", "fsac"]
