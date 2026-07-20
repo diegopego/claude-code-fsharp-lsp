@@ -13,8 +13,11 @@ HANDOFF.md
 ROADMAP.md
 docs/plans/
 
-# Local tooling and editor state
-.claude/
+# Local tooling and editor state. Ignore .claude/ contents but keep the
+# project-local skills subtree — a trailing-slash `.claude/` would stop git
+# descending at all, so the re-includes below would never fire.
+.claude/*
+!.claude/skills/
 .vscode/
 .idea/
 
