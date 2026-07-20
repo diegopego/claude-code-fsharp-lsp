@@ -119,6 +119,21 @@ def test_references_lists_the_position_of_every_hit(run_cli, scenario, fsfile, t
     assert result.stdout.index("5:26") < result.stdout.index("5:33")
 
 
+def test_references_exits_one_when_the_position_holds_no_symbol(
+        run_cli, scenario, fsfile, tmp_path):
+    """Zero references is not "searched and found none".
+
+    The query sets includeDeclaration, so a real symbol always returns at least
+    itself. An empty result means the position landed on a comment, a blank line
+    or the wrong column -- the off-by-one this CLI's 1-based convention exists to
+    prevent -- and must be distinguishable from success by exit code alone."""
+    scenario_path = scenario({"responses": {"textDocument/references": []}})
+    result = run_cli(["references", str(tmp_path), str(fsfile()), "5", "5"], scenario_path)
+
+    assert result.returncode == 1
+    assert "0 reference(s) in 0 file(s)" in result.stdout
+
+
 def test_references_no_config_flag_changes_the_label(run_cli, scenario, fsfile, tmp_path):
     record = tmp_path / "record.jsonl"
     scenario_path = scenario({

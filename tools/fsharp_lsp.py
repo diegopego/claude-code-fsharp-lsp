@@ -522,7 +522,9 @@ def cmd_references(args) -> int:
             print(f"  {shown}: {len(hits)}")
             for line, col in hits:
                 print(f"    {line}:{col}")
-        return 0
+        # includeDeclaration means a real symbol always returns at least itself,
+        # so an empty result is not "found none" -- it is a position that missed.
+        return 0 if refs else 1
     finally:
         client.shutdown()
 
