@@ -667,6 +667,19 @@ def cmd_doctor(args) -> int:
     return 2 if problems else 0
 
 
+# Help for the positionals that are easy to get wrong. The module docstring
+# covers both conventions, but argparse only shows that on the top-level
+# `--help`; a reader who goes straight to `references --help` sees the
+# subparser alone, so the warnings have to live on the arguments themselves.
+HELP_PROJECT = ("workspace root for FSAC to load: the directory holding the "
+                ".fsproj, which is often NOT the repository root")
+HELP_FILE = "the .fs/.fsi/.fsx file to ask about"
+HELP_LINE = ("1-based line, as an editor reports it; passing line-1 lands on "
+             "the attribute or doc comment above the symbol and answers "
+             "confidently about the wrong one")
+HELP_COL = "1-based column, as an editor reports it"
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -693,19 +706,23 @@ def main() -> int:
     # c.set_defaults(func=cmd_code_action)
 
     f = sub.add_parser("references", help="textDocument/references")
-    f.add_argument("project"); f.add_argument("file")
-    f.add_argument("line", type=int); f.add_argument("col", type=int)
+    f.add_argument("project", help=HELP_PROJECT)
+    f.add_argument("file", help=HELP_FILE)
+    f.add_argument("line", type=int, help=HELP_LINE)
+    f.add_argument("col", type=int, help=HELP_COL)
     f.add_argument("--no-config", action="store_true",
                    help="skip didChangeConfiguration (to A/B its effect)")
     f.set_defaults(func=cmd_references)
 
     d = sub.add_parser("diagnostics", help="list diagnostics for a file")
-    d.add_argument("project"); d.add_argument("file")
+    d.add_argument("project", help=HELP_PROJECT)
+    d.add_argument("file", help=HELP_FILE)
     d.add_argument("--verbose", action="store_true", help="dump server log")
     d.set_defaults(func=cmd_diagnostics)
 
     s = sub.add_parser("symbols", help="smoke test: document symbols")
-    s.add_argument("project"); s.add_argument("file")
+    s.add_argument("project", help=HELP_PROJECT)
+    s.add_argument("file", help=HELP_FILE)
     s.set_defaults(func=cmd_symbols)
 
     doc = sub.add_parser("doctor", help="check that dependencies are present and working")
