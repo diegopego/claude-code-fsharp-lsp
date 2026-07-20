@@ -419,7 +419,7 @@
       <div class="roles">
         <div class="role">
           <p class="who">You</p>
-          <p>Ask a question: <em>where is <code>parseWire</code> used?</em> No commands, no coordinates.</p>
+          <p>Ask a question: <em>where is <code>renew</code> used?</em> No commands, no coordinates.</p>
         </div>
         <div class="role">
           <p class="who">Claude</p>
@@ -454,7 +454,7 @@
             <span class="term-title">plugin disabled, Ionide running</span>
           </div>
           <div class="term-body wraps">
-<div class="line"><span class="dim">LSP hover — Domain/Status.fs:189</span></div>
+<div class="line"><span class="dim">LSP hover — demo/LibraryLending/Loan.fs:17</span></div>
 <div class="line"><span class="fail">No LSP server available for file type: .fs</span></div>
           </div>
         </div>
@@ -500,37 +500,69 @@
       <p>
         Claude Code's <code>LSP</code> tool is entirely reads — nine operations, not one
         of them a write. So renaming is the one thing it cannot do, and the one thing
-        this plugin adds a tool for. Look first, commit to what you saw, then let the
-        compiler have the last word.
+        this plugin adds a tool for. Take a real request against the <code>demo/</code>
+        project: <strong>rename <code>renew</code> to <code>renewLoan</code></strong>.
+        Look with the compiler, commit to what you saw, then let the compiler have the
+        last word.
       </p>
 
       <ol class="steps">
         <li>
           <div class="step-body">
-            <h3>Every place it is used</h3>
+            <h3>The reflex answer is wrong</h3>
             <p>
-              <code>findReferences</code> at the declaration. The answer is the
-              compiler's, so it crosses project boundaries — a symbol in the main
-              project shows its uses in the test project too — and it excludes the
-              comments, strings and longer identifiers a text search would have
-              swept in.
+              A text search is the natural first move, and it over-counts.
+              <code>renew</code> is a substring of <code>renewalLimit</code>,
+              <code>RenewalsUsed</code> and <code>renewAll</code>, and it turns up in
+              comments too.
             </p>
             <div class="term">
               <div class="term-bar">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">findReferences — Domain/Status.fs:86:9</span>
+                <span class="term-title">grep — the reflex, and it over-counts</span>
               </div>
-              <div class="term-body">
-<div class="line"><span class="path">Found 3 references across 3 files:</span></div>
-<div class="line"><span class="dim">  Domain/Status.fs</span></div>
-<div class="line"><span class="ok">    Line 86:9</span></div>
-<div class="line"><span class="dim">  Web/Handlers.fs</span></div>
-<div class="line"><span class="ok">    Line 138:38</span></div>
-<div class="line"><span class="dim">  Tests/Tests.fs</span></div>
-<div class="line"><span class="ok">    Line 277:43</span></div>
+              <div class="term-body wraps">
+<div class="line"><span class="prompt">$</span> <span class="cmd">grep -rn renew demo --include='*.fs'</span></div>
+<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:6:/// Renew a batch of loans, keeping only the ones that could be renewed.</span></div>
+<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:7:let renewAll (today: DateOnly) (loans: Loan list) =</span></div>
+<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:8:    loans |&gt; List.choose (renew today)</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:7:/// A loan may be renewed at most this many times.</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:8:let renewalLimit = 2</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:19:/// Extend the due date by two weeks — unless the renewal limit is</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:21:let renew (today: DateOnly) (loan: Loan) =</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:22:    if loan.RenewalsUsed &gt;= renewalLimit then None</span></div>
               </div>
             </div>
-            <p class="takeaway">Exact to the character. Column 38 of <code>Handlers.fs</code> line 138 is where <code>parseWire</code> starts, not where the line does.</p>
+            <p class="takeaway">Eight hits — but only two are the function <code>renew</code>: its declaration and one call. A <code>grep</code> count is not a reference count.</p>
+          </div>
+        </li>
+
+        <li>
+          <div class="step-body">
+            <h3>Ask the compiler instead</h3>
+            <p>
+              <code>findReferences</code> at the declaration returns the compiler's
+              list — every real site, <code>line:column</code>, grouped by file. It
+              excludes the comments a text search swept in, and it crosses the project
+              boundary: the definition lives in the library, the use in a separate
+              consumer project.
+            </p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">findReferences — Loan.fs:21:5</span>
+              </div>
+              <div class="term-body">
+<div class="line"><span class="path">Found 2 references across 2 files:</span></div>
+<div class="line"><span class="dim"></span></div>
+<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:</span></div>
+<div class="line"><span class="dim">  Line 8:27</span></div>
+<div class="line"><span class="dim"></span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:</span></div>
+<div class="line"><span class="dim">  Line 21:5</span></div>
+              </div>
+            </div>
+            <p class="takeaway">Two references, exact to the character. Column 27 of <code>Renewals.fs</code> line 8 is where <code>renew</code> starts, not where the line does.</p>
           </div>
         </li>
 
@@ -539,10 +571,9 @@
             <h3>Look before you write</h3>
             <p>
               <code>rename_fsharp_symbol.py</code> with no flags is a dry run: it prints
-              every edit it would make and changes nothing. An agent running it to see
-              the blast radius cannot alter your source by doing so. The rename is
-              semantic, not textual — <code>doubleTrouble</code> is left alone, and use
-              sites in other projects are found.
+              every edit it would make and changes nothing. The rename is semantic, not
+              textual — <code>renewalLimit</code> and <code>RenewalsUsed</code> are left
+              alone.
             </p>
             <div class="term">
               <div class="term-bar">
@@ -550,18 +581,17 @@
                 <span class="term-title">dry run — nothing is written</span>
               </div>
               <div class="term-body wraps">
-<div class="line"><span class="prompt">$</span> <span class="cmd">rename_fsharp_symbol.py . Domain/Status.fs 86 9 parseStatus</span></div>
-<div class="line"><span class="path">DRY RUN: rename -&gt; 'parseStatus' | 3 file(s), 3 edit(s)</span></div>
-<div class="line"><span class="dim">  Domain/Status.fs</span></div>
-<div class="line"><span class="ok">    86:9  parseWire -&gt; parseStatus</span></div>
-<div class="line"><span class="dim">  Web/Handlers.fs</span></div>
-<div class="line"><span class="ok">    138:38  parseWire -&gt; parseStatus</span></div>
-<div class="line"><span class="dim">  Tests/Tests.fs</span></div>
-<div class="line"><span class="ok">    277:43  parseWire -&gt; parseStatus</span></div>
+<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/rename_fsharp_symbol.py demo demo/LibraryLending/Loan.fs 21 5 renewLoan</span></div>
+<div class="line"><span class="path">DRY RUN: rename -&gt; 'renewLoan' | 2 file(s), 2 edit(s)</span></div>
+<div class="line"><span class="dim">  LibraryLending/Loan.fs</span></div>
+<div class="line"><span class="ok">    21:5  renew -&gt; renewLoan</span></div>
+<div class="line"><span class="dim">  LibraryLending.Consumer/Renewals.fs</span></div>
+<div class="line"><span class="ok">    8:27  renew -&gt; renewLoan</span></div>
+<div class="line"><span class="dim"></span></div>
 <div class="line"><span class="dim">(dry run — pass --apply to write)</span></div>
               </div>
             </div>
-            <p class="takeaway">Three edits, matching the three references from step 1 exactly. That agreement is the thing to check before writing — it is what <code>--expect</code> then enforces.</p>
+            <p class="takeaway">Two edits, matching the two references exactly. That agreement is what <code>--expect</code> then enforces.</p>
           </div>
         </li>
 
@@ -569,11 +599,28 @@
           <div class="step-body">
             <h3>Commit to the count</h3>
             <p>
-              <code>--apply --expect N</code>, where N came from step 1. If the server
-              returns a different number, nothing is written and it exits 4. That is
-              what makes the first step load-bearing rather than decorative: a rename
-              landing one line off is confident, plausible, and wrong.
+              <code>--apply --expect N</code>, where N came from step 2. If the server
+              returns a different number, nothing is written and it exits 4 — which is
+              what makes step 2 load-bearing rather than decorative: a rename landing one
+              line off is confident, plausible, and wrong.
             </p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">apply — guarded by the count</span>
+              </div>
+              <div class="term-body wraps">
+<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/rename_fsharp_symbol.py demo demo/LibraryLending/Loan.fs 21 5 renewLoan --apply --expect 2</span></div>
+<div class="line"><span class="path">APPLY: rename -&gt; 'renewLoan' | 2 file(s), 2 edit(s)</span></div>
+<div class="line"><span class="dim">  LibraryLending/Loan.fs</span></div>
+<div class="line"><span class="ok">    21:5  renew -&gt; renewLoan</span></div>
+<div class="line"><span class="dim">  LibraryLending.Consumer/Renewals.fs</span></div>
+<div class="line"><span class="ok">    8:27  renew -&gt; renewLoan</span></div>
+<div class="line"><span class="dim"></span></div>
+<div class="line"><span class="ok">Wrote 2 file(s).</span></div>
+              </div>
+            </div>
+            <p class="takeaway"><code>PROJECT</code> is the workspace root fsautocomplete loads — here <code>demo</code>, which holds the <code>.slnx</code> and both projects, often not the repo root.</p>
           </div>
         </li>
 
@@ -581,10 +628,10 @@
           <div class="step-body">
             <h3>Let the compiler have the last word</h3>
             <p>
-              F# closes the loop in a way most languages cannot. Anything the rename
-              did not reach is <code>FS0039</code> — <em>the value or constructor is not
-              defined</em> — a hard error, with no configuration required to make it
-              one. It cannot pass quietly.
+              F# closes the loop in a way most languages cannot. Anything the rename did
+              not reach is <code>FS0039</code> — <em>the value or constructor is not
+              defined</em> — a hard error, no configuration required. Here is a rename
+              that renamed the declaration but missed the cross-project call:
             </p>
             <div class="term">
               <div class="term-bar">
@@ -592,19 +639,38 @@
                 <span class="term-title">the last word</span>
               </div>
               <div class="term-body wraps">
-<div class="line"><span class="prompt">$</span> <span class="cmd">dotnet build --no-incremental</span></div>
-<div class="line"><span class="fail">Handlers.fs(138,38): error FS0039: The value or constructor 'parseWire' is not defined.</span></div>
+<div class="line"><span class="prompt">$</span> <span class="cmd">dotnet build --no-incremental demo/LibraryLending.slnx</span></div>
+<div class="line"><span class="fail">demo/LibraryLending.Consumer/Renewals.fs(8,27): error FS0039: The value or constructor 'renew' is not defined. Maybe you want one of the following:   renewLoan   renewalLimit</span></div>
               </div>
             </div>
-            <p class="takeaway"><code>--no-incremental</code> is not decoration. A repeat build re-reports nothing, so warnings you have not fixed can look as though they went away. An error also suppresses the warnings in every file compiled after it, since F# stops there.</p>
+            <p class="takeaway">The compiler even names the near-misses — <code>renewLoan</code>, <code>renewalLimit</code> — the very identifiers the text search confused for <code>renew</code>.</p>
           </div>
         </li>
       </ol>
 
       <p class="note">
         Manual renaming is far safer in F# than in a dynamically typed language, and
-        this is why: the failure is loud, immediate, and points at the line.
+        this is why: the failure is loud, immediate, and points at the line. Most
+        questions never write at all — <code>hover</code> establishes a type before you
+        touch anything:
       </p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">hover — isOverdue</span>
+              </div>
+              <div class="term-body">
+<div class="line"><span class="path">val isOverdue:</span></div>
+<div class="line"><span class="ok">   today: DateOnly -&gt;</span></div>
+<div class="line"><span class="dim">   loan : Loan</span></div>
+<div class="line"><span class="ok">       -&gt; bool</span></div>
+<div class="line"><span class="dim"></span></div>
+<div class="line"><span class="dim">A loan is overdue once its due date has passed.</span></div>
+<div class="line"><span class="dim"></span></div>
+<div class="line"><span class="path">Full name: LibraryLending.Loan.isOverdue</span></div>
+<div class="line"><span class="path">Assembly: LibraryLending</span></div>
+              </div>
+            </div>
     </div>
   </section>
 
@@ -679,12 +745,12 @@
         </div>
         <div class="term-body wraps">
 <div class="line"><span class="fail">No LSP server available for file type: .fs</span></div>
-<div class="line"><span class="dim">  → no server registered. The plugin is not installed, or not enabled.</span></div>
+<div class="line"><span class="dim">  &rarr; no server registered. The plugin is not installed, or not enabled.</span></div>
 <div class="line"><span class="amber">Couldn't find &lt;file&gt; in LoadedProjects</span></div>
-<div class="line"><span class="dim">  → a server IS running. That file's project is outside the directory</span></div>
+<div class="line"><span class="dim">  &rarr; a server IS running. That file's project is outside the directory</span></div>
 <div class="line"><span class="dim">    Claude Code was launched in. Open a session there.</span></div>
 <div class="line"><span class="dim">(a hang, or silence)</span></div>
-<div class="line"><span class="dim">  → registered, but the binary will not start. Almost always PATH.</span></div>
+<div class="line"><span class="dim">  &rarr; registered, but the binary will not start. Almost always PATH.</span></div>
 <div class="line"><span class="dim">    This is the one the health check exists for.</span></div>
         </div>
       </div>
@@ -692,53 +758,51 @@
       <p>
         The third reports nothing because the server dies before the LSP handshake
         completes, so the tool waits rather than failing. The plugin runs
-        <code>check_fsharp_lsp.py</code> at every session start to catch it, and it prints nothing
-        unless something is wrong. Run by hand it says what it found — this is a
-        working install, with a project directory passed as the optional argument:
+        <code>check_fsharp_lsp.py</code> at every session start to catch it, printing
+        nothing unless something is wrong. Run by hand it says what it found — this is a
+        working install, with the demo project passed as the optional argument:
       </p>
 
-      <div class="term">
-        <div class="term-bar">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="term-title">a healthy install</span>
-        </div>
-        <div class="term-body wraps">
-<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/check_fsharp_lsp.py ~/src/orderboard</span></div>
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">a healthy install</span>
+              </div>
+              <div class="term-body">
+<div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/check_fsharp_lsp.py demo</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    python 3.10</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    fsautocomplete 0.83.0  (/home/you/.dotnet/tools/fsautocomplete)</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    dotnet sdk 10.0.110</span></div>
-<div class="line"><span class="ok">  ok</span><span class="dim">    2 restored project(s) under /home/you/src/orderboard</span></div>
-        </div>
-      </div>
+<div class="line"><span class="ok">  ok</span><span class="dim">    2 restored project(s) under demo</span></div>
+              </div>
+            </div>
 
       <p>
         And against a broken one — the binary is installed here, it is simply not on
         PATH:
       </p>
 
-      <div class="term">
-        <div class="term-bar">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="term-title">a broken install</span>
-        </div>
-        <div class="term-body wraps">
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">a broken install</span>
+              </div>
+              <div class="term-body wraps">
 <div class="line"><span class="prompt">$</span> <span class="cmd">python3 tools/check_fsharp_lsp.py</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    python 3.10</span></div>
 <div class="line"><span class="ok">  ok</span><span class="dim">    dotnet sdk 10.0.110</span></div>
 <div class="line"><span class="fail">  FAIL  fsautocomplete is not on PATH. Install it with 'dotnet tool install -g fsautocomplete', then make sure the global tools directory (~/.dotnet/tools on Linux and macOS) is on the PATH of the process that launches Claude Code. A login shell rc file is not always enough, and that gap is the most common cause of this.</span></div>
 <div class="line"><span class="prompt">$</span> <span class="cmd">echo $?</span></div>
 <div class="line"><span class="dim">2</span></div>
-        </div>
-      </div>
+              </div>
+            </div>
       <p class="note">
-        The binary is installed in that run — it is simply not on PATH, and the check
-        refuses to be reassured by finding it elsewhere. Claude Code launches the
-        server as a bare command, so a copy the shell cannot resolve is a copy the
-        server cannot start. It reports every check rather than stopping at the first
-        failure, and it <em>executes</em> fsautocomplete rather than testing for a
-        file, because a binary that exists but dies on startup produces the same
-        silent hang. Pass a project directory as an argument and it also checks that
-        the directory really holds a restored <code>.fsproj</code>.
+        Claude Code launches the server as a bare command, so a copy the shell cannot
+        resolve is a copy the server cannot start. The check reports every line rather
+        than stopping at the first failure, and it <em>executes</em> fsautocomplete
+        rather than testing for a file, because a binary that exists but dies on startup
+        produces the same silent hang. Pass a project directory and it also checks the
+        directory holds a restored <code>.fsproj</code>.
       </p>
     </div>
   </section>
