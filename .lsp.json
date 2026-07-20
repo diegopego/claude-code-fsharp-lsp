@@ -1,0 +1,21 @@
+{
+  "fsharp": {
+    "command": "fsautocomplete",
+    "args": [],
+    "extensionToLanguage": {
+      ".fs": "fsharp",
+      ".fsi": "fsharp",
+      ".fsx": "fsharp"
+    },
+    "transport": "stdio",
+    "initializationOptions": {
+      "AutomaticWorkspaceInit": true
+    },
+    "settings": {
+      "FSharp": {}
+    },
+    "diagnostics": true,
+    "restartOnCrash": true,
+    "maxRestarts": 3
+  }
+}

@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# .NET build output from the test fixture project
+[Bb]in/
+[Oo]bj/
+
+# Internal working documents — machine paths, private project names,
+# and notes written for a private audience. Kept locally, never committed.
+HANDOFF.md
+ROADMAP.md
+docs/plans/
+
+# Local tooling and editor state
+.claude/
+.vscode/
+.idea/
+
+# Never commit secrets or local overrides
+.env
+.env.*
+*.local
+
+# OS noise
+.DS_Store
+Thumbs.db

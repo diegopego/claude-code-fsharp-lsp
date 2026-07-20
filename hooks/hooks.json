@@ -1,0 +1,16 @@
+{
+  "description": "Warn at session start when this plugin's dependencies are missing or broken.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/tools/fsharp_lsp.py\" doctor --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

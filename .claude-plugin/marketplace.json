@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "claude-code-fsharp-lsp",
+  "owner": {
+    "name": "Diego Oliveira Pego",
+    "email": "5631904+diegopego@users.noreply.github.com"
+  },
+  "description": "F# code intelligence for Claude Code via fsautocomplete (FSAC).",
+  "plugins": [
+    {
+      "name": "fsharp-lsp",
+      "source": "./",
+      "description": "F# code intelligence (fsautocomplete/FSAC) for the Claude Code LSP tool: .fs/.fsi/.fsx, plus a read-only query CLI.",
+      "category": "development",
+      "license": "MIT",
+      "keywords": ["fsharp", "dotnet", "lsp", "fsautocomplete", "fsac"]
+    }
+  ]
+}
