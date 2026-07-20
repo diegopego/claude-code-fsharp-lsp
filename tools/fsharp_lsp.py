@@ -613,6 +613,26 @@ def cmd_doctor(args) -> int:
                 version = probe.stdout.strip().split("+")[0] or "unknown"
                 notes.append(f"fsautocomplete {version}  ({origin}: {binary})")
 
+    # Diagnostic, never a gate. 'dotnet tool install -g fsautocomplete' cannot
+    # succeed without an SDK, and FSAC ships net8.0/net9.0/net10.0 builds - so
+    # anyone holding the binary already has a working one. The .NET 10 floor
+    # belongs to this repo's fixture, not to users. All this earns is that a bug
+    # report arrives carrying the version instead of prompting a round trip.
+    dotnet = shutil.which("dotnet")
+    if not dotnet:
+        notes.append("dotnet not on PATH (only matters if project loading fails)")
+    else:
+        try:
+            sdk_probe = subprocess.run([dotnet, "--list-sdks"], capture_output=True,
+                                       text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            notes.append(f"dotnet at {dotnet} did not answer --list-sdks")
+        else:
+            # Each line is "<version> [<path>]"; the version is all we report.
+            sdks = [line.split()[0] for line in sdk_probe.stdout.splitlines()
+                    if line.strip()]
+            notes.append(f"dotnet sdk {', '.join(sdks) if sdks else 'none installed'}")
+
     if args.project:
         root = Path(args.project)
         if not root.is_dir():

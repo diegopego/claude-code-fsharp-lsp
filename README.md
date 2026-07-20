@@ -53,6 +53,11 @@ given a `PROJECT` — that the directory really holds a restored `.fsproj`. Each
 failures is otherwise silent: when the server cannot start, Claude Code's built-in `LSP` tool
 hangs rather than reporting anything.
 
+It also reports your installed .NET SDKs. That one is never a failure — if
+`dotnet tool install -g fsautocomplete` worked, your SDK is fine — it is there so that
+**if you do open an issue, paste the whole `doctor` output**, and the version questions are
+already answered.
+
 The plugin also runs `doctor` at the start of every session. It prints nothing unless
 something is wrong.
 

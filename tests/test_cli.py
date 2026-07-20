@@ -1,4 +1,8 @@
 import json
+import shutil
+import sys
+
+import pytest
 
 
 def _recorded(record_path):
@@ -161,6 +165,37 @@ def test_doctor_flags_a_binary_that_is_present_but_broken(run_cli):
     assert result.returncode == 2
     assert "exited 1" in result.stderr
     assert "could not resolve runtime" in result.stderr
+
+
+def test_doctor_never_fails_over_the_dotnet_sdk(run_cli, tmp_path):
+    """The SDK line is diagnostic, never a gate.
+
+    An earlier version of this check was going to fail the run when no .NET 10
+    SDK was present. That was wrong: `dotnet tool install -g fsautocomplete`
+    cannot succeed without some SDK, and FSAC ships net8.0/net9.0/net10.0
+    builds, so anyone who installed it at all has a working one. The SDK 10
+    requirement belongs to this repo's fixture, not to users. All the check
+    earns is putting the version in the output so a bug report carries it."""
+    # A PATH with python3 (the fake FSAC is a #!/usr/bin/env script) but no
+    # dotnet. Emptying PATH outright breaks the fake, not the thing under test.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "python3").symlink_to(sys.executable)
+    assert shutil.which("dotnet", path=str(bin_dir)) is None
+
+    result = run_cli(["doctor"], extra_env={"PATH": str(bin_dir)})
+
+    assert result.returncode == 0, result.stderr
+    assert "FAIL" not in result.stdout and "FAIL" not in result.stderr
+
+
+@pytest.mark.skipif(shutil.which("dotnet") is None,
+                    reason="no dotnet on PATH - the .NET-free CI leg lands here")
+def test_doctor_reports_the_dotnet_sdk_when_there_is_one(run_cli):
+    result = run_cli(["doctor"])
+
+    assert result.returncode == 0, result.stderr
+    assert "dotnet sdk" in result.stdout
 
 
 def test_doctor_hook_mode_is_silent_when_healthy(run_cli):
