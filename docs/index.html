@@ -469,7 +469,7 @@
       <div class="roles">
         <div class="role">
           <p class="who">You</p>
-          <p>Ask a question: <em>where is <code>double</code> used?</em> No commands, no coordinates.</p>
+          <p>Ask a question: <em>is anything still calling <code>quadruple</code>, or can I delete it?</em> No commands, no coordinates.</p>
         </div>
         <div class="role">
           <p class="who">Claude</p>
@@ -486,7 +486,7 @@
       </p>
 
       <blockquote class="pullquote">
-        <p>“Use when you need a compiler-accurate answer about F# code — every reference to a symbol, the diagnostics for a file, or the symbols a file defines — and especially when the file belongs to a project outside the directory Claude Code was launched in.”</p>
+        <p>“Use whenever working with F# code — reading it, navigating it, or establishing a fact about it before a change. […] Also covers why a grep count is not a reference count.”</p>
         <cite>— skills/fsharp-lsp-queries/SKILL.md, the instruction Claude reads</cite>
       </blockquote>
 
@@ -495,6 +495,65 @@
         own, so a broken environment announces itself before it can waste your time.
         Nobody types that one either.
       </p>
+    </div>
+  </section>
+
+  <section id="what">
+    <div class="wrap">
+      <p class="eyebrow">/// what this is</p>
+      <h2>Claude Code ships the socket. F# needs the server plugged in.</h2>
+
+      <p class="lead">
+        That tool is generic — a socket with no server behind it until a plugin
+        registers one for your file extension. Nothing listens on <code>.fs</code>
+        out of the box, so asking it for a definition returns an error, not an
+        answer. There is no official F# plugin. This is that plugin.
+      </p>
+
+      <p>
+        Which makes the first half below <strong>not an enhancement to something
+        that already worked</strong> — it is the wiring that makes hover, references
+        and call hierarchy exist for F# at all. The second half is a CLI for the two
+        questions that wiring structurally cannot answer.
+      </p>
+
+      <div class="parts">
+        <div class="part">
+          <h3>The LSP wiring</h3>
+          <p>A small <code>.lsp.json</code> registering fsautocomplete for <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code>. One warm server per session, answers immediate. <strong>Your daily driver</strong> — this is what handles nearly everything.</p>
+          <ul class="caps">
+            <li>goToDefinition</li><li>hover</li><li>findReferences</li>
+            <li>documentSymbol</li><li>workspaceSymbol</li>
+            <li>goToImplementation</li><li>call hierarchy</li>
+          </ul>
+        </div>
+        <div class="part">
+          <h3>The query CLI</h3>
+          <p>Drives its own FSAC process, so it takes the workspace root as an argument. Slower by design — a fresh server per call — and it exists for the gap the wiring cannot reach: <strong>any project on disk</strong>, not just the one you launched in.</p>
+          <ul class="caps">
+            <li>any project on disk</li><li>references</li>
+            <li>symbols</li><li>diagnostics</li><li>doctor</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="note">
+        Why <strong>diagnostics</strong> is on that list at all: the language server
+        publishes compiler errors and warnings the whole time — the
+        <code>.lsp.json</code> above even sets <code>"diagnostics": true</code>.
+        Claude Code's <code>LSP</code> tool just has no operation to read them. The
+        information arrives and has no door out. This is the door — a narrow one.
+        <code>dotnet build</code> reports the same errors across <em>every</em> file
+        rather than one, and runs in any directory you can name, including the
+        out-of-workspace projects this CLI exists for. Reach for
+        <code>diagnostics</code> where a build is genuinely unavailable; prefer the
+        build otherwise.
+      </p>
+
+      <blockquote class="pullquote">
+        <p>“Ask it about a file outside that root and it answers <em>Couldn't find &lt;file&gt; in LoadedProjects</em>, with no way to point it elsewhere. This tool takes the workspace root as an argument, so it can answer questions about any project on disk.”</p>
+        <cite>— fsharp_lsp.py --help</cite>
+      </blockquote>
     </div>
   </section>
 
@@ -649,7 +708,7 @@
 <div class="line"><span class="ok">No diagnostics.</span></div>
               </div>
             </div>
-            <p class="takeaway">Clean. Had a call site been missed, this would name it as <code>The value or constructor 'double' is not defined</code>, with its line.</p>
+            <p class="takeaway">Clean. Had a call site been missed, this would name it as <code>The value or constructor 'double' is not defined</code>, with its line. Note <em>which</em> file was asked about: <code>Consumer.fs</code>, the one that consumes the rename, not <code>Library.fs</code>, where it was made. <code>diagnostics</code> answers for one file, and F#'s compilation order is semantic — an edit breaks the files <em>below</em> it, not itself. On a project with more than two files, <code>dotnet build</code> is what closes this loop.</p>
           </div>
         </li>
 
@@ -694,36 +753,6 @@
         returns <em>1 reference in 1 file</em>, at the position you pointed to — the
         declaration and nothing else, which means nothing calls it.
       </p>
-    </div>
-  </section>
-
-  <section id="what">
-    <div class="wrap">
-      <p class="eyebrow">/// what this is</p>
-      <h2>A plugin for the workspace. A CLI for everything outside it.</h2>
-
-      <div class="parts">
-        <div class="part">
-          <h3>The LSP plugin</h3>
-          <p>Wires fsautocomplete into Claude Code's built-in <code>LSP</code> tool, so navigation works on <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code> — one warm server, fastest for casual work.</p>
-          <ul class="caps">
-            <li>goToDefinition</li><li>hover</li><li>findReferences</li>
-            <li>documentSymbol</li><li>call hierarchy</li>
-          </ul>
-        </div>
-        <div class="part">
-          <h3>The query CLI</h3>
-          <p>Drives its own FSAC process to answer what the built-in tool cannot: any project outside the current workspace, and compiler diagnostics.</p>
-          <ul class="caps">
-            <li>references</li><li>diagnostics</li><li>symbols</li><li>doctor</li>
-          </ul>
-        </div>
-      </div>
-
-      <blockquote class="pullquote">
-        <p>“Ask it about a file outside that root and it answers <em>Couldn't find &lt;file&gt; in LoadedProjects</em>, with no way to point it elsewhere. This tool takes the workspace root as an argument, so it can answer questions about any project on disk.”</p>
-        <cite>— fsharp_lsp.py --help</cite>
-      </blockquote>
     </div>
   </section>
 
@@ -859,8 +888,11 @@
         environment error — so a missed position fails a script rather than passing quietly
         through it. If fsautocomplete lives somewhere unusual,
         point at it with <code>FSAC_PATH</code> rather than reordering your <code>PATH</code>.
-        Budget 2–6s warm and up to ~40s cold: each invocation starts a fresh server and loads
-        the whole MSBuild graph, which is also why it can never serve a stale project graph.
+        Each invocation starts a fresh server and loads the whole MSBuild graph, which is why
+        it can never serve a stale project graph — and why you should expect tens of seconds on
+        a real solution rather than suspect a hang. That cost tracks the size of the project
+        graph, not the difficulty of the question, so nothing here belongs in an interactive
+        loop.
       </p>
     </div>
   </section>
