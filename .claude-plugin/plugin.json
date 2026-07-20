@@ -1,7 +1,7 @@
 {
   "name": "fsharp-lsp",
   "description": "F# language support for Claude Code: the fsautocomplete (FSAC) LSP server, plus a standalone read-only query CLI for projects outside the current workspace",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": {
     "name": "Diego Oliveira Pego",
     "email": "5631904+diegopego@users.noreply.github.com"
