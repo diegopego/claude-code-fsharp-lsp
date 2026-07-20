@@ -8,7 +8,13 @@ See [README.md](README.md) for installation, prerequisites and usage.
 
 These are decisions already made. Do not revisit them without asking.
 
-**`tools/fsharp_lsp.py` stays read-only.** The `rename` and `code-action` write paths were built, verified end to end, then deliberately commented out. Leave them commented. A tool that ships inside a repository must not be able to rewrite it.
+**`tools/fsharp_lsp.py` stays read-only for now.** The `rename` and `code-action` write
+paths were built and worked, then were commented out because they raised enough open
+issues that Diego chose to defer them to a future version rather than ship them
+half-trusted. Leave them commented; the notes at the end of the file record what they did
+and which gaps remain. This is a deferral, not a prohibition — do not restate it as a
+doctrine about tools never rewriting their own repository. That reasoning was written here
+once, was wrong, and was corrected by Diego on 2026-07-20.
 
 **`tools/fsharp_lsp.py` stays standard-library-only.** No runtime dependencies, ever. pytest is a dev dependency and must never be imported by the tool.
 
