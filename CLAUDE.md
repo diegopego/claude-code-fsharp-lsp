@@ -20,6 +20,14 @@ These are decisions already made. Do not revisit them without asking.
 
 **No PyPI package.** One published artifact. Revisit only if a user asks after release.
 
+**`doctor`'s .NET SDK line is diagnostic, never a gate.** Do not "improve" it into a check
+that fails when some SDK version is missing. That was proposed once, with confidence, and
+it was wrong: `fsautocomplete` ships net8.0/net9.0/net10.0 builds with `rollForward`, and
+`dotnet tool install -g fsautocomplete` cannot succeed without an SDK at all — so anyone
+holding the binary already has a working one. The .NET 10 floor above belongs to the test
+fixture, not to users. The line exists so a bug report arrives carrying the version.
+`test_doctor_never_fails_over_the_dotnet_sdk` pins this.
+
 ## Running things
 
 ```bash
