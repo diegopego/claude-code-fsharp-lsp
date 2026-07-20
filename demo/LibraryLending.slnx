@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LibraryLending/LibraryLending.fsproj" />
+  <Project Path="LibraryLending.Consumer/LibraryLending.Consumer.fsproj" />
+</Solution>

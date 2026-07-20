@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Renewals.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../LibraryLending/LibraryLending.fsproj" />
+  </ItemGroup>
+
+</Project>

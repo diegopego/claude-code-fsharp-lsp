@@ -2,6 +2,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# .NET build output from the demo project
+demo/**/bin/
+demo/**/obj/
+
 
 # Internal working documents — machine paths, private project names,
 # and notes written for a private audience. Kept locally, never committed.
