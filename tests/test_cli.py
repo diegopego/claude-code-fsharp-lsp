@@ -89,6 +89,36 @@ def test_references_groups_hits_by_file(run_cli, scenario, fsfile, tmp_path):
     assert "/proj/Library.fs: 1" in result.stdout
 
 
+def test_references_lists_the_position_of_every_hit(run_cli, scenario, fsfile, tmp_path):
+    """A count says a symbol is used twice; refactoring needs to know where.
+
+    Positions are printed 1-based, matching the convention the CLI accepts."""
+    scenario_path = scenario({
+        "responses": {
+            "textDocument/references": [
+                {"uri": "file:///proj/Library.fs",
+                 "range": {"start": {"line": 6, "character": 4},
+                           "end": {"line": 6, "character": 10}}},
+                {"uri": "file:///proj/Consumer.fs",
+                 "range": {"start": {"line": 4, "character": 32},
+                           "end": {"line": 4, "character": 38}}},
+                {"uri": "file:///proj/Consumer.fs",
+                 "range": {"start": {"line": 4, "character": 25},
+                           "end": {"line": 4, "character": 31}}},
+            ]
+        }
+    })
+    result = run_cli(["references", str(tmp_path), str(fsfile()), "5", "5"], scenario_path)
+
+    assert result.returncode == 0
+    # LSP line 4 character 25 is reported as line 5, column 26.
+    assert "    5:26" in result.stdout
+    assert "    5:33" in result.stdout
+    assert "    7:5" in result.stdout
+    # Hits within a file are ordered by position, not by arrival order.
+    assert result.stdout.index("5:26") < result.stdout.index("5:33")
+
+
 def test_references_no_config_flag_changes_the_label(run_cli, scenario, fsfile, tmp_path):
     record = tmp_path / "record.jsonl"
     scenario_path = scenario({

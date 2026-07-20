@@ -47,6 +47,12 @@ whole MSBuild graph on startup.
 
 ## Interpreting the answers
 
+**`references` gives you positions, not just a count.** Each hit is printed as
+`line:column`, 1-based, grouped under its file and ordered by position — the
+same convention the CLI accepts, so a position it prints can be fed straight
+back in. That is what makes it usable before a refactor: it answers where every
+use is, in a project the built-in tool cannot load.
+
 **A name in F# is often both a type and a module.** `grep -c` conflates the
 two, and additionally counts comments, string literals, and substrings of
 longer identifiers. When a count matters, take it from `references` and

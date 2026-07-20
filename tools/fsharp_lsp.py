@@ -482,8 +482,13 @@ def uri_to_path(uri: str) -> Path:
 
 
 def cmd_references(args) -> int:
-    """Exists to A/B the didChangeConfiguration hypothesis: run with and without
-    --no-config and compare. Whatever differs is caused by configuration."""
+    """Every use of a symbol, as file, line and column -- the compiler's answer
+    to "where would a rename have to touch?", which is the question the built-in
+    LSP tool cannot answer for a project outside the workspace.
+
+    The per-file count is kept alongside the positions: it is what reconciles
+    against a textual grep, and --no-config exists to A/B the
+    didChangeConfiguration hypothesis by diffing two runs."""
     root, file = Path(args.project), Path(args.file)
     client = LspClient(FSAC, root)
     try:
@@ -497,9 +502,15 @@ def cmd_references(args) -> int:
                 "context": {"includeDeclaration": True},
             },
         ) or []
-        by_file: dict[Path, int] = {}
+        # Keep the per-file count -- it is what reconciles against a textual
+        # grep -- but print the position of every hit underneath it, 1-based.
+        # A count alone says a symbol is used twice without saying where, which
+        # is the half of the answer a refactor cannot act on.
+        by_file: dict[Path, list[tuple[int, int]]] = {}
         for r in refs:
-            by_file[uri_to_path(r["uri"])] = by_file.get(uri_to_path(r["uri"]), 0) + 1
+            start = r["range"]["start"]
+            by_file.setdefault(uri_to_path(r["uri"]), []).append(
+                (start["line"] + 1, start["character"] + 1))
         label = "WITHOUT config" if args.no_config else "WITH config"
         print(f"{label}: {len(refs)} reference(s) in {len(by_file)} file(s)")
         for path in sorted(by_file):
@@ -507,7 +518,10 @@ def cmd_references(args) -> int:
                 shown = path.relative_to(root.resolve())
             except ValueError:
                 shown = path
-            print(f"  {shown}: {by_file[path]}")
+            hits = sorted(by_file[path])
+            print(f"  {shown}: {len(hits)}")
+            for line, col in hits:
+                print(f"    {line}:{col}")
         return 0
     finally:
         client.shutdown()

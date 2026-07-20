@@ -61,6 +61,10 @@ already answered.
 The plugin also runs `doctor` at the start of every session. It prints nothing unless
 something is wrong.
 
+`references` prints the position of every hit as `line:column`, grouped under its file
+and preceded by the per-file count — the compiler's answer to where a rename would have
+to touch, for a project the built-in tool cannot load.
+
 `PROJECT` is the directory FSAC loads as the workspace root — the one holding the
 `.fsproj`, which is often not the repository root. Positions are **1-based**, as an
 editor reports them. Exit codes: `0` ok, `1` nothing found, `2` LSP or environment
