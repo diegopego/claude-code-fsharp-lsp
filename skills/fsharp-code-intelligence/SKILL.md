@@ -60,25 +60,48 @@ confident answer about the wrong symbol.
 That is eight of the tool's nine operations. The ninth, `prepareCallHierarchy`, is a precursor some clients need before the call
 operations; here `incomingCalls` and `outgoingCalls` take a position directly, so it never has to be called.
 
-## Refactoring without a rename operation
+## Renaming a symbol
 
-There is no semantic rename for F# in Claude Code — the `LSP` tool's operations
-are all reads. Do it from the positions instead:
+The `LSP` tool's nine operations are all reads, so renaming is the one thing it
+cannot do. `tools/rename_fsharp_symbol.py` is the other half of the same
+workflow — read with the tool, write with this — not an alternative to it.
 
-1. `findReferences` at the declaration. The result is the compiler's list of
-   every site, each as `line:column`, grouped by file and crossing project
-   boundaries — a symbol in the main project shows its uses in the test project
-   too.
-2. Edit each site. The positions are exact to the character; they are the hard
-   part of the job, and you already have them.
-3. `findReferences` again at the same position. The old name should be gone and
-   the new declaration should stand alone.
-4. Build. In F# a missed site is `FS0039`, "the value or constructor is not
-   defined" — a hard error with no configuration required, so the compiler
-   catches what step 3 missed.
+```bash
+python3 tools/rename_fsharp_symbol.py PROJECT FILE LINE COL NEW_NAME [--expect N] [--apply]
+```
 
-That last point is worth trusting. Manual renaming is far safer in F# than in a
-dynamically typed language, because the failure is loud.
+**Look first, then commit to what you saw.**
+
+1. `findReferences` at the declaration. This is how you decide whether to rename
+   at all: it gives the compiler's list of every site, `line:column`, grouped by
+   file and crossing project boundaries — a symbol in the main project shows its
+   uses in the test project too. Count them.
+2. Run the rename with no flags. Dry run is the default, so this writes nothing;
+   it prints every edit as `line:col  old -> new`.
+3. Run it again with `--apply --expect N`, where N is the count from step 1.
+   `--expect` is what makes step 1 load-bearing rather than decorative: if the
+   server returns a different number, nothing is written and it exits 4.
+4. Build. In F# a missed site is `FS0039`, *the value or constructor is not
+   defined* — a hard error needing no configuration.
+
+`PROJECT` is the directory holding the `.fsproj`, often **not** the repo root.
+Positions are 1-based, as everywhere else here.
+
+**Read the exit code rather than assuming success.** Every non-zero one means
+nothing was written:
+
+| exit | meaning |
+|---|---|
+| 3 | refused. The position holds no renameable symbol, the server returned an edit changing nothing, or the edit carried a file operation. Note fsautocomplete declines Active Patterns and Active Pattern Cases outright |
+| 4 | the edit count did not match `--expect` |
+| 5 | the file changed while the rename was being computed, so the edits describe text that no longer exists |
+
+It renames a symbol and nothing else — no renaming files, no moving a symbol
+between modules, no extract or inline, and it never touches the `.fsproj`, where
+F#'s compile order is semantic and a file move is a human decision.
+
+*If the plugin is not installed*, fall back to editing each site from
+`findReferences` by hand and letting the build catch what you miss.
 
 ## When F# is not working
 

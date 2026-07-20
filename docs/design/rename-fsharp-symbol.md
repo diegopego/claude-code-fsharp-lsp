@@ -1,6 +1,6 @@
 # Design: `rename_fsharp_symbol.py`
 
-**Status:** design, not implemented
+**Status:** implemented in 2.1.0 (`b4c2aa7`)
 **Target:** 2.1.0
 **Supersedes:** the 1.2.0 write-path design, which planned to add `rename` as a
 subcommand of a general query CLI. That CLI was removed in 2.0.0; this document

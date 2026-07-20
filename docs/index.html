@@ -465,7 +465,7 @@
   <section id="what">
     <div class="wrap">
       <p class="eyebrow">/// what this is</p>
-      <h2>Three files, one job each.</h2>
+      <h2>Four files, one job each.</h2>
       <p>
         Register the server, teach Claude to use it, and speak up when the
         environment cannot run it.
@@ -478,11 +478,15 @@
         </div>
         <div class="part">
           <h3>the skill</h3>
-          <p>Teaches Claude which operation answers which question, how to refactor with no rename available, and why a <code>grep</code> count is not a reference count.</p>
+          <p>Teaches Claude which operation answers which question, how to rename a symbol safely, and why a <code>grep</code> count is not a reference count.</p>
         </div>
         <div class="part">
           <h3><code>check_fsharp_lsp.py</code></h3>
           <p>Runs at session start, silent unless something is wrong. It exists for one failure that reports nothing at all — see <a href="#trouble">below</a>.</p>
+        </div>
+        <div class="part">
+          <h3><code>rename_fsharp_symbol.py</code></h3>
+          <p>Semantic rename. The <code>LSP</code> tool is all reads, so this is the one operation it has no equivalent for — and the only reason a second tool exists here at all.</p>
         </div>
       </div>
 
@@ -494,9 +498,10 @@
       <p class="eyebrow">/// the loop</p>
       <h2>One rename, from question to proof.</h2>
       <p>
-        There is no rename operation. Claude Code's <code>LSP</code> tool is entirely
-        reads — nine operations, not one of them a write. That sounds like a gap, and
-        in F# it very nearly is not, because the compiler closes it at the end.
+        Claude Code's <code>LSP</code> tool is entirely reads — nine operations, not one
+        of them a write. So renaming is the one thing it cannot do, and the one thing
+        this plugin adds a tool for. Look first, commit to what you saw, then let the
+        compiler have the last word.
       </p>
 
       <ol class="steps">
@@ -531,23 +536,43 @@
 
         <li>
           <div class="step-body">
-            <h3>Edit each site</h3>
+            <h3>Look before you write</h3>
             <p>
-              The positions were the hard part of the job and you already have them.
-              This step is mechanical, and it is the one a real
-              <code>textDocument/rename</code> would have done atomically — the only
-              thing actually lost by not having one.
+              <code>rename_fsharp_symbol.py</code> with no flags is a dry run: it prints
+              every edit it would make and changes nothing. An agent running it to see
+              the blast radius cannot alter your source by doing so. The rename is
+              semantic, not textual — <code>doubleTrouble</code> is left alone, and use
+              sites in other projects are found.
             </p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span class="term-title">dry run — nothing is written</span>
+              </div>
+              <div class="term-body wraps">
+<div class="line"><span class="prompt">$</span> <span class="cmd">rename_fsharp_symbol.py . Domain/Status.fs 86 9 parseStatus</span></div>
+<div class="line"><span class="path">DRY RUN: rename -&gt; 'parseStatus' | 3 file(s), 3 edit(s)</span></div>
+<div class="line"><span class="dim">  Domain/Status.fs</span></div>
+<div class="line"><span class="ok">    86:9  parseWire -&gt; parseStatus</span></div>
+<div class="line"><span class="dim">  Web/Handlers.fs</span></div>
+<div class="line"><span class="ok">    138:38  parseWire -&gt; parseStatus</span></div>
+<div class="line"><span class="dim">  Tests/Tests.fs</span></div>
+<div class="line"><span class="ok">    277:43  parseWire -&gt; parseStatus</span></div>
+<div class="line"><span class="dim">(dry run — pass --apply to write)</span></div>
+              </div>
+            </div>
+            <p class="takeaway">Three edits, matching the three references from step 1 exactly. That agreement is the thing to check before writing — it is what <code>--expect</code> then enforces.</p>
           </div>
         </li>
 
         <li>
           <div class="step-body">
-            <h3>Ask again, and check the old name is gone</h3>
+            <h3>Commit to the count</h3>
             <p>
-              Same position, same question. A symbol that still exists always returns
-              at least its own declaration, so <em>one</em> reference means the
-              declaration and nothing else — which is also how you spot dead code.
+              <code>--apply --expect N</code>, where N came from step 1. If the server
+              returns a different number, nothing is written and it exits 4. That is
+              what makes the first step load-bearing rather than decorative: a rename
+              landing one line off is confident, plausible, and wrong.
             </p>
           </div>
         </li>
@@ -556,8 +581,8 @@
           <div class="step-body">
             <h3>Let the compiler have the last word</h3>
             <p>
-              This is the step that makes the missing rename tolerable. A site you
-              missed is <code>FS0039</code> — <em>the value or constructor is not
+              F# closes the loop in a way most languages cannot. Anything the rename
+              did not reach is <code>FS0039</code> — <em>the value or constructor is not
               defined</em> — a hard error, with no configuration required to make it
               one. It cannot pass quietly.
             </p>

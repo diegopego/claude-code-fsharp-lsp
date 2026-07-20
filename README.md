@@ -75,22 +75,40 @@ on any `.fs` symbol. A type signature means it is live. See
 | `.lsp.json` | registers `fsautocomplete` for `.fs`, `.fsi`, `.fsx`. This is the plugin |
 | `skills/fsharp-code-intelligence/` | teaches Claude which operation answers which question, and why a `grep` count is not a reference count |
 | `tools/check_fsharp_lsp.py` | health check, run automatically at session start |
+| `tools/rename_fsharp_symbol.py` | semantic rename — the one operation the `LSP` tool has no equivalent for |
 
-## Refactoring
+## Renaming
 
-The `LSP` tool's operations are all reads — there is no rename. The workable
-substitute, and what the skill teaches Claude to do:
+Claude Code's `LSP` tool cannot write — its nine operations are all reads — so
+renaming is the one thing it structurally cannot do, and `rename_fsharp_symbol.py`
+duplicates nothing. It is the write end of the same workflow: navigate with the
+`LSP` tool, rename with this.
 
-1. `findReferences` at the declaration, giving every use site as `line:column`,
-   grouped by file and crossing project boundaries.
-2. Edit each site. The positions are exact to the character.
-3. `findReferences` again to confirm the old name is gone.
-4. Build. In F# a missed site is `FS0039` — *the value or constructor is not
-   defined* — a hard error with no configuration required, so the compiler
-   catches whatever step 3 missed.
+```bash
+python3 tools/rename_fsharp_symbol.py PROJECT FILE LINE COL NEW_NAME
+```
 
-That last step is why manual renaming is far safer in F# than in a dynamically
-typed language: the failure is loud.
+**Dry run is the default.** It prints every edit it would make and changes
+nothing, so looking is always safe. Add `--apply` to write, and `--expect N` to
+refuse unless exactly N edits come back — take N from `findReferences` at the
+same position, so the number is the compiler's rather than a guess.
+
+`PROJECT` is the directory holding the `.fsproj`, which is often not the repo
+root. `LINE` and `COL` are 1-based, as an editor reports them.
+
+It is semantic, not textual: renaming `double` leaves `doubleTrouble` alone, and
+reaches use sites in other projects that a search of the current directory never
+sees. Every non-zero exit means nothing was written — `3` refused, `4` the count
+did not match `--expect`, `5` the file changed underneath it.
+
+Then build. In F# a missed site is `FS0039` — *the value or constructor is not
+defined* — a hard error needing no configuration, which is why refactoring F# is
+far safer than in a dynamically typed language: the failure is loud.
+
+It renames a symbol and nothing else. No renaming files, no moving symbols
+between modules, no extract or inline, no formatting — that last one is
+[Fantomas](https://fsprojects.github.io/fantomas/)'s job. fsautocomplete itself
+declines to rename Active Patterns and Active Pattern Cases.
 
 ## Diagnostics
 
@@ -146,9 +164,10 @@ python3 ~/.claude/plugins/cache/claude-code-fsharp-lsp/fsharp-lsp/*/tools/check_
 python3 -m pytest
 ```
 
-About a second, no .NET needed. `tests/fake_fsac.py` stands in for the binary so
-the health check can be tested against a healthy install, a missing one and a
-present-but-broken one.
+About a second, no .NET needed. `tests/fake_fsac.py` stands in for the binary: it
+answers `--version` so the health check can be tested against a healthy install, a
+missing one and a present-but-broken one, and it speaks enough LSP to answer a
+rename with a scripted edit — including the malformed ones each guard exists for.
 
 ## Names, disambiguated
 

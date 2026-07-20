@@ -1,6 +1,6 @@
 # claude-code-fsharp-lsp
 
-A Claude Code plugin that registers [fsautocomplete](https://github.com/ionide/FsAutoComplete) (FSAC) as the F# language server, so Claude Code's `LSP` tool works on `.fs`, `.fsi` and `.fsx`. Three files do the work: `.lsp.json` registers the server, `skills/fsharp-code-intelligence/` teaches Claude how to use it, and `tools/check_fsharp_lsp.py` diagnoses the one way it can break silently.
+A Claude Code plugin that registers [fsautocomplete](https://github.com/ionide/FsAutoComplete) (FSAC) as the F# language server, so Claude Code's `LSP` tool works on `.fs`, `.fsi` and `.fsx`. Four files do the work: `.lsp.json` registers the server, `skills/fsharp-code-intelligence/` teaches Claude how to use it, `tools/check_fsharp_lsp.py` diagnoses the one way it can break silently, and `tools/rename_fsharp_symbol.py` does the one thing the `LSP` tool cannot.
 
 See [README.md](README.md) for installation, prerequisites and usage.
 
@@ -29,9 +29,13 @@ concludes they have a fourth unknown problem.
 | `Couldn't find <file> in LoadedProjects` | server running; that file's project is outside the launch directory |
 | a hang, or silence | server registered, binary will not start — almost always PATH. **the health check exists for this one** |
 
-**The `LSP` tool's operations are all reads.** There is no rename. Refactoring is
-`findReferences` for the positions, then an edit per site, then a build — in F# a missed
-site is `FS0039`, a hard error, so the compiler catches what you miss.
+**The `LSP` tool's operations are all reads.** That is why
+`tools/rename_fsharp_symbol.py` exists and why it is not a duplicate of anything: it is
+the write end of the same workflow, not a rival to it. The distinction is load-bearing —
+the CLI removed in 2.0.0 died of *overlapping* the `LSP` tool, so anything living here
+must fill a gap the `LSP` tool cannot reach at all. Verified 2026-07-20 against
+fsautocomplete 0.83.0: renaming `double` produced 4 edits across 2 files, left the
+unrelated `doubleTrouble` alone, and the project built clean.
 
 **`disable` takes effect immediately; `enable` does not.** Disabling drops the server in
 the running session. Enabling does not bring it back until the session restarts. A test
@@ -61,16 +65,28 @@ reintroduced by accident:
   not the wording.
 
 Recoverable from commit `887342b` ("chore: release 1.1.1") if it is ever wanted
-back — note there is no `v1.1.1` tag; tagging stopped at `v1.0.1` — most plausibly to
-host a `rename`, since the `LSP` tool cannot write and a write path was already built and
-verified there before being commented out.
+back — note there is no `v1.1.1` tag; tagging stopped at `v1.0.1`. The `rename` it also
+carried, commented out, shipped in 2.1.0 as its own single-purpose tool rather than as a
+subcommand; two of its defects only surfaced on the way (see that commit). Nothing else
+in that file is wanted.
 
 ## Hard constraints
 
 These are decisions already made. Do not revisit them without asking.
 
-**`tools/check_fsharp_lsp.py` stays standard-library-only.** No runtime dependencies, ever. pytest
-is a dev dependency and must never be imported by it.
+**Both tools stay standard-library-only.** No runtime dependencies, ever. pytest
+is a dev dependency and must never be imported by either.
+
+**`rename_fsharp_symbol.py` renames a symbol and never grows a second job.** No
+`references`, no `symbols`, no `diagnostics` — the `LSP` tool answers those, and
+*overlapping it* is precisely what killed the CLI removed in 2.0.0. A need that does not
+fit "rename one symbol" is a different tool with a different name, not a flag on this one.
+
+**Dry run stays the default there, and every guard keeps a mutation test.** An
+exploratory run must never write. The guards are listed in commit `b4c2aa7`; each was
+broken in turn and watched to fail. The first attempt at the file-operation test survived
+deletion of its own guard, because a *different* guard caught the case and the assertion
+was only `!= 0` — when adding a guard, assert the specific refusal, not merely failure.
 
 **`check_fsharp_lsp.py`'s .NET SDK line is diagnostic, never a gate.** Do not "improve" it into a check
 that fails when some SDK version is missing. That was proposed once, with confidence, and
