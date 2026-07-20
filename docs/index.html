@@ -509,31 +509,26 @@
       <ol class="steps">
         <li>
           <div class="step-body">
-            <h3>The reflex answer is wrong</h3>
+            <h3>The reflex answer isn't a reference</h3>
             <p>
-              A text search is the natural first move, and it over-counts.
-              <code>renew</code> is a substring of <code>renewalLimit</code>,
-              <code>RenewalsUsed</code> and <code>renewAll</code>, and it turns up in
-              comments too.
+              A text search is the natural first move, and you would run a good one —
+              anchor the word, so <code>renewalLimit</code>, <code>RenewalsUsed</code>
+              and the comments never enter the count.
             </p>
             <div class="term">
               <div class="term-bar">
                 <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="term-title">grep — the reflex, and it over-counts</span>
+                <span class="term-title">grep — anchored, and two hits are the wrong function</span>
               </div>
               <div class="term-body wraps">
-<div class="line"><span class="prompt">$</span> <span class="cmd">grep -rn renew demo --include='*.fs'</span></div>
-<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:6:/// Renew a batch of loans, keeping only the ones that could be renewed.</span></div>
-<div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:7:let renewAll (today: DateOnly) (loans: Loan list) =</span></div>
+<div class="line"><span class="prompt">$</span> <span class="cmd">grep -rnw renew demo --include='*.fs' | sort</span></div>
+<div class="line"><span class="dim">demo/LibraryLending.Consumer/Memberships.fs:8:    members |&gt; List.map (renew today)</span></div>
 <div class="line"><span class="dim">demo/LibraryLending.Consumer/Renewals.fs:8:    loans |&gt; List.choose (renew today)</span></div>
-<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:7:/// A loan may be renewed at most this many times.</span></div>
-<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:8:let renewalLimit = 2</span></div>
-<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:19:/// Extend the due date by two weeks — unless the renewal limit is</span></div>
 <div class="line"><span class="dim">demo/LibraryLending/Loan.fs:21:let renew (today: DateOnly) (loan: Loan) =</span></div>
-<div class="line"><span class="dim">demo/LibraryLending/Loan.fs:22:    if loan.RenewalsUsed &gt;= renewalLimit then None</span></div>
+<div class="line"><span class="dim">demo/LibraryLending/Member.fs:11:let renew (today: DateOnly) (m: Member) =</span></div>
               </div>
             </div>
-            <p class="takeaway">Eight hits — but only two are the function <code>renew</code>: its declaration and one call. A <code>grep</code> count is not a reference count.</p>
+            <p class="takeaway">Four hits, every one the exact word <code>renew</code> — but <code>Member.renew</code> renews a membership, not a loan. Two of the four are a different function grep cannot tell from the target. A <code>grep</code> count is not a reference count.</p>
           </div>
         </li>
 
@@ -541,11 +536,11 @@
           <div class="step-body">
             <h3>Ask the compiler instead</h3>
             <p>
-              <code>findReferences</code> at the declaration returns the compiler's
-              list — every real site, <code>line:column</code>, grouped by file. It
-              excludes the comments a text search swept in, and it crosses the project
-              boundary: the definition lives in the library, the use in a separate
-              consumer project.
+              <code>findReferences</code> at the loan declaration returns the compiler's
+              list — every real site, <code>line:column</code>, grouped by file. It keeps
+              two of grep's four and drops the other two: <code>Member.renew</code> is a
+              different binding, and the compiler knows it though the spelling is
+              identical — then it crosses the project boundary into the consumer.
             </p>
             <div class="term">
               <div class="term-bar">
@@ -572,8 +567,8 @@
             <p>
               <code>rename_fsharp_symbol.py</code> with no flags is a dry run: it prints
               every edit it would make and changes nothing. The rename is semantic, not
-              textual — <code>renewalLimit</code> and <code>RenewalsUsed</code> are left
-              alone.
+              textual — it rewrites the two loan sites and leaves <code>Member.renew</code>,
+              the identically-spelled membership function, untouched.
             </p>
             <div class="term">
               <div class="term-bar">
@@ -643,7 +638,7 @@
 <div class="line"><span class="fail">demo/LibraryLending.Consumer/Renewals.fs(8,27): error FS0039: The value or constructor 'renew' is not defined. Maybe you want one of the following:   renewLoan   renewalLimit</span></div>
               </div>
             </div>
-            <p class="takeaway">The compiler even names the near-misses — <code>renewLoan</code>, <code>renewalLimit</code> — the very identifiers the text search confused for <code>renew</code>.</p>
+            <p class="takeaway">The compiler even names the near-misses — <code>renewLoan</code>, <code>renewalLimit</code> — the identifiers an unanchored text search sweeps in.</p>
           </div>
         </li>
       </ol>

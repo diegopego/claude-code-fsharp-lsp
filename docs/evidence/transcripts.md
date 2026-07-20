@@ -43,15 +43,11 @@ $ echo $?
 ### grep-renew
 captured: 2026-07-20 · fsac: 0.83.0 · plugin-hash: 37d551e13f40 · project: demo
 ```
-$ grep -rn renew demo --include='*.fs'
-demo/LibraryLending.Consumer/Renewals.fs:6:/// Renew a batch of loans, keeping only the ones that could be renewed.
-demo/LibraryLending.Consumer/Renewals.fs:7:let renewAll (today: DateOnly) (loans: Loan list) =
+$ grep -rnw renew demo --include='*.fs' | sort
+demo/LibraryLending.Consumer/Memberships.fs:8:    members |> List.map (renew today)
 demo/LibraryLending.Consumer/Renewals.fs:8:    loans |> List.choose (renew today)
-demo/LibraryLending/Loan.fs:7:/// A loan may be renewed at most this many times.
-demo/LibraryLending/Loan.fs:8:let renewalLimit = 2
-demo/LibraryLending/Loan.fs:19:/// Extend the due date by two weeks — unless the renewal limit is
 demo/LibraryLending/Loan.fs:21:let renew (today: DateOnly) (loan: Loan) =
-demo/LibraryLending/Loan.fs:22:    if loan.RenewalsUsed >= renewalLimit then None
+demo/LibraryLending/Member.fs:11:let renew (today: DateOnly) (m: Member) =
 ```
 
 ### findreferences-renew

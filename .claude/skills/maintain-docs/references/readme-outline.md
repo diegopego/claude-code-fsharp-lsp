@@ -48,17 +48,24 @@ Each story follows one shape, and every output block is preceded by its
 file:
 
 > **Prompt** (plain language) → **What Claude reaches for first** (its own
-> `Grep`/`Glob`, over-counting shown honestly) → **What the compiler says** (the
-> plugin's `LSP`/rename output, from evidence) → **What Claude does with the gap.**
+> `Grep` — the *anchored* search a real model runs, which still returns a
+> same-named but unrelated symbol) → **What the compiler says** (the plugin's
+> `LSP`/rename output, from evidence) → **What Claude does with the gap.**
 
 **Primary story — rename `renew` to `renewLoan`:**
 - Prompt: "rename `renew` to `renewLoan`."
-- Grep first: `grep -rn renew demo/` matches `renew`, `renewalLimit`,
-  `RenewalsUsed`, `renewAll` — 11 lines. The count is wrong, and the story shows
-  why.
-- Compiler: `findReferences` at the declaration (`findreferences-renew`) →
-  the two real sites, crossing into the Consumer project; then the dry run
-  (`rename-dryrun`) showing the same count.
+- Grep first, honestly: anchor the word (`grep -rnw renew demo | sort`) so the
+  substring and comment noise never enters the count. It *still* returns four
+  hits, because the demo defines two functions named `renew` — `Loan.renew` and
+  `Member.renew` (a membership renewal). Two of the four are the wrong binding,
+  and no regex separates identically spelled symbols. The strawman to avoid is a
+  naive `grep -rn renew` whose only "false positives" are `renewalLimit` and
+  comments — noise a competent search discards. The real point needs a homograph.
+- Compiler: `findReferences` at the `Loan.renew` declaration
+  (`findreferences-renew`) → the two loan sites only, dropping the two
+  `Member.renew` hits grep returned, and crossing into the Consumer project; then
+  the dry run (`rename-dryrun`) touching only those two, leaving `Member.renew`
+  alone.
 - Action: `--apply --expect N` with N from `findReferences`, then `dotnet build`
   (`build-fs0039`) — or the recorded gap if the SDK was absent.
 
@@ -73,4 +80,6 @@ return type before a change; the read-only path.
 - Every count, version, path, and exit code traces to evidence or to a repo file.
   Prose may be reworded freely; facts may not be invented.
 - Prefer the compiler's word over an approximation: a `grep` count is not a
-  reference count, and the README says so by showing both.
+  reference count. The README proves it — an anchored, airtight regex still
+  returns four hits where two are a different function also named `renew`, and
+  only the compiler separates them.

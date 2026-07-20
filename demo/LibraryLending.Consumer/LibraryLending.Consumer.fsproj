@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="Renewals.fs" />
+    <Compile Include="Memberships.fs" />
   </ItemGroup>
 
   <ItemGroup>

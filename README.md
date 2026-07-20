@@ -95,33 +95,38 @@ compiler have the last word.
 
 Take a real request against the demo: **rename `renew` to `renewLoan`.**
 
-### 1. The reflex answer is wrong
+### 1. The reflex answer isn't a reference
 
-A text search is the natural first move, and it over-counts. `renew` is a
-substring of `renewalLimit`, `RenewalsUsed` and `renewAll`, and it appears in
-comments:
+A text search is the natural first move, and you would run a good one — anchor
+the word, so `renewalLimit`, `RenewalsUsed` and the comments never enter the
+count:
 
 <!-- evidence: grep-renew -->
 ```
-$ grep -rn renew demo --include='*.fs'
-demo/LibraryLending.Consumer/Renewals.fs:6:/// Renew a batch of loans, keeping only the ones that could be renewed.
-demo/LibraryLending.Consumer/Renewals.fs:7:let renewAll (today: DateOnly) (loans: Loan list) =
+$ grep -rnw renew demo --include='*.fs' | sort
+demo/LibraryLending.Consumer/Memberships.fs:8:    members |> List.map (renew today)
 demo/LibraryLending.Consumer/Renewals.fs:8:    loans |> List.choose (renew today)
-demo/LibraryLending/Loan.fs:7:/// A loan may be renewed at most this many times.
-demo/LibraryLending/Loan.fs:8:let renewalLimit = 2
-demo/LibraryLending/Loan.fs:19:/// Extend the due date by two weeks — unless the renewal limit is
 demo/LibraryLending/Loan.fs:21:let renew (today: DateOnly) (loan: Loan) =
-demo/LibraryLending/Loan.fs:22:    if loan.RenewalsUsed >= renewalLimit then None
+demo/LibraryLending/Member.fs:11:let renew (today: DateOnly) (m: Member) =
 ```
 
-Eight hits — but only two of them are the function `renew`: its declaration and
-one call. A `grep` count is not a reference count.
+The regex is airtight — four hits, every one the exact word `renew`. Two of them
+are the wrong function. A library renews two different things, and the demo has a
+function for each: `Loan.renew` extends a loan, `Member.renew` extends a
+membership. The two declarations differ only in a parameter type, and the two
+call sites — `(renew today)` mapped over `loans` in one file, over `members` in
+the other — are all but identical. The task is to rename the loan one, and `grep`
+cannot see that `Member.fs:11` and `Memberships.fs:8` belong to the other
+function, because nothing in the characters says so. No pattern separates them:
+the difference is which definition the name resolves to, which is a question about
+meaning, not spelling. A count you cannot audit is not a reference count.
 
 ### 2. Ask the compiler instead
 
-`findReferences` at the declaration returns the compiler's list — every real
-site, `line:column`, grouped by file. It excludes the comments and the
-longer identifiers a text search swept in, and it **crosses the project
+`findReferences` at the loan declaration returns the compiler's list — every real
+site, `line:column`, grouped by file. It keeps two of grep's four and drops the
+other two: `Member.renew` and its call are a different binding, and the compiler
+knows it even though the spelling is identical. What remains **crosses the project
 boundary**: the definition lives in the library, the use in a separate consumer
 project.
 
@@ -143,8 +148,9 @@ where `renew` starts, not where the line does. That is the number to act on.
 
 `rename_fsharp_symbol.py` with no flags is a dry run: it prints every edit it
 would make and changes nothing, so seeing the blast radius is always safe. The
-rename is semantic, not textual — `renewalLimit` and `RenewalsUsed` are left
-alone.
+rename is semantic, not textual — it rewrites the two loan sites and leaves
+`Member.renew`, the identically-spelled membership function grep could not tell
+apart, untouched.
 
 <!-- evidence: rename-dryrun -->
 ```
@@ -197,10 +203,10 @@ $ dotnet build --no-incremental demo/LibraryLending.slnx
 demo/LibraryLending.Consumer/Renewals.fs(8,27): error FS0039: The value or constructor 'renew' is not defined. Maybe you want one of the following:   renewLoan   renewalLimit
 ```
 
-The compiler even names the near-misses — `renewLoan`, `renewalLimit` — the very
-identifiers the text search had confused for `renew`. Manual renaming is far
-safer in F# than in a dynamically typed language, and this is why: the failure is
-loud, immediate, and points at the line.
+The compiler even names the near-misses — `renewLoan`, `renewalLimit` — the
+identifiers an unanchored text search sweeps in. Manual renaming is far safer in
+F# than in a dynamically typed language, and this is why: the failure is loud,
+immediate, and points at the line.
 
 `--no-incremental` is not decoration. A repeat build re-reports nothing, so
 warnings you have not fixed can look as though they went away; and an error
@@ -283,7 +289,8 @@ answers `--version` so the health check can be tested against a healthy install,
 missing one and a present-but-broken one, and it speaks enough LSP to answer a
 rename with a scripted edit — including the malformed ones each guard exists for.
 The `demo/` project is the documentation instrument: every snippet above is
-captured from it, and a test asserts the `grep` decoy still over-counts.
+captured from it, and a test asserts the two-`renew` decoy still makes an
+*anchored* `grep` over-count the loan symbol.
 
 ## Names, disambiguated
 
