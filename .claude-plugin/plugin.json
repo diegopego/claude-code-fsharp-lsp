@@ -1,7 +1,7 @@
 {
   "name": "fsharp-lsp",
   "description": "F# language support for Claude Code: registers the fsautocomplete (FSAC) language server for .fs/.fsi/.fsx, with a skill teaching Claude which operation answers which question, and a semantic rename for the one thing the LSP tool cannot do",
-  "version": "2.2.0",
+  "version": "1.1.2",
   "author": {
     "name": "Diego Oliveira Pego",
     "email": "5631904+diegopego@users.noreply.github.com"
