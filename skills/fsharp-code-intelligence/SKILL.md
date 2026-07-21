@@ -68,8 +68,14 @@ cannot do. `tools/rename_fsharp_symbol.py` is the other half of the same
 workflow — read with the tool, write with this — not an alternative to it.
 
 ```bash
-python3 tools/rename_fsharp_symbol.py PROJECT FILE LINE COL NEW_NAME [--expect N] [--apply]
+python3 "${CLAUDE_SKILL_DIR}/../../tools/rename_fsharp_symbol.py" PROJECT FILE LINE COL NEW_NAME [--expect N] [--apply]
 ```
+
+`${CLAUDE_SKILL_DIR}` is this skill's own install directory, so the command
+targets the `rename_fsharp_symbol.py` that shipped with the plugin, wherever it
+is installed. Run it as written — a bare `tools/…` is relative to *your* project,
+not the plugin, and searching the disk for the file can land on a stale cached
+copy of another version.
 
 **Look first, then commit to what you saw.**
 
@@ -85,8 +91,15 @@ python3 tools/rename_fsharp_symbol.py PROJECT FILE LINE COL NEW_NAME [--expect N
 4. Build. In F# a missed site is `FS0039`, *the value or constructor is not
    defined* — a hard error needing no configuration.
 
-`PROJECT` is the directory holding the `.fsproj`, often **not** the repo root.
-Positions are 1-based, as everywhere else here.
+`PROJECT` is the workspace root fsautocomplete loads — the directory whose
+subtree holds the `.fsproj`, or the `.sln`/`.slnx` above it so a cross-project
+rename loads every referencing project. Often **not** the repo root, and never a
+namespace folder *below* the project: aim it at `Domain/` while the `.fsproj`
+sits a level up and fsautocomplete loads nothing, then answers `Couldn't find
+<file> in LoadedProjects` — and only after a slow start. Confirm the directory in
+about a second first with `python3 tools/check_fsharp_lsp.py PROJECT`, which lists
+the restored project(s) it finds there and turns that slow, opaque failure into an
+instant named one. Positions are 1-based, as everywhere else here.
 
 **Read the exit code rather than assuming success.** Every non-zero one means
 nothing was written:
