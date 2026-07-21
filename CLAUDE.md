@@ -1,6 +1,6 @@
 # claude-code-fsharp-lsp
 
-A Claude Code plugin that registers [fsautocomplete](https://github.com/ionide/FsAutoComplete) (FSAC) as the F# language server, so Claude Code's `LSP` tool works on `.fs`, `.fsi` and `.fsx`. Four files do the work: `.lsp.json` registers the server, `skills/fsharp-code-intelligence/` teaches Claude how to use it, `tools/check_fsharp_lsp.py` diagnoses the one way it can break silently, and `tools/rename_fsharp_symbol.py` does the one thing the `LSP` tool cannot.
+A Claude Code plugin that registers [fsautocomplete](https://github.com/ionide/FsAutoComplete) (FSAC) as the F# language server, so Claude Code's `LSP` tool works on `.fs`, `.fsi` and `.fsx`. Five files do the work: `.lsp.json` registers the server, `tools/fsac_sync_proxy.py` sits on the server's stdio and keeps its buffers synced to the disk (Claude Code's own client does not), `skills/fsharp-code-intelligence/` teaches Claude how to use it, `tools/check_fsharp_lsp.py` diagnoses the ways it can break silently, and `tools/rename_fsharp_symbol.py` does the one thing the `LSP` tool cannot.
 
 See [README.md](README.md) for installation, prerequisites and usage.
 
@@ -28,6 +28,24 @@ concludes they have a fourth unknown problem.
 | `No LSP server available for file type: .fs` | no server registered — plugin not installed or not enabled |
 | `Couldn't find <file> in LoadedProjects` | server running; that file's project is outside the launch directory |
 | a hang, or silence | server registered, binary will not start — almost always PATH. **the health check exists for this one** |
+
+**Claude Code's interactive LSP client never tells the server about a write.**
+Measured at the wire 2026-07-21 (Claude Code 2.1.215): after an Edit-tool
+change, the interactive client sent **no `didChange` at all** — while the
+headless `-p` client sent a correct full-text `didChange` v2 for the same
+action. Without intervention the server's buffer freezes at first-query
+content for the whole session (measured 2026-07-20: 40+ minutes, Edit did not
+resync, hover past the frozen buffer's last line errored while the disk had
+more lines). Killing the server does not recover — the client keeps a zombie
+connection refusing every call — and no mid-session restart exists. That is
+why `.lsp.json` launches FSAC through `tools/fsac_sync_proxy.py`, and why that
+proxy is wired the exact way the bench validated: resync from disk before each
+request, server-open changed never-opened files, then a same-text bumped-version
+`didChange` to every tracked doc — without that last nudge, cross-file answers
+stay stale forever (measured; FSAC does not re-typecheck dependents on its
+own). `FSHARP_LSP_SYNC=off` reduces the proxy to a pure byte pass-through.
+FSAC itself accepts a rangeless full-text `didChange` regardless of version
+number — also measured, so version games are not the failure mode here.
 
 **The `LSP` tool's operations are all reads.** That is why
 `tools/rename_fsharp_symbol.py` exists and why it is not a duplicate of anything: it is
@@ -74,8 +92,17 @@ in that file is wanted.
 
 These are decisions already made. Do not revisit them without asking.
 
-**Both tools stay standard-library-only.** No runtime dependencies, ever. pytest
-is a dev dependency and must never be imported by either.
+**All three tools stay standard-library-only.** No runtime dependencies, ever.
+pytest is a dev dependency and must never be imported by any of them.
+
+**The sync proxy fails open and forwards client bytes verbatim.** An internal
+error skips the injection, never the request — stale beats broken, because the
+proxy's failure mode must never be worse than the bug it fixes. Client frames
+are forwarded raw, not re-serialised: parsing stays a read-only side channel,
+so a parsing bug can corrupt tracking but not traffic. `FSHARP_LSP_SYNC=off`
+must remain a *pure* pass-through that runs no parser at all — when the valve
+exists because the proxy itself is suspected, the off position must not run
+the suspect's code. Each of these is pinned by a mutation-verified test.
 
 **`rename_fsharp_symbol.py` renames a symbol and never grows a second job.** No
 `references`, no `symbols`, no `diagnostics` — the `LSP` tool answers those, and
@@ -141,10 +168,14 @@ silently switch SDKs.
 `tests/fake_fsac.py` is a stand-in for the FSAC binary that answers `--version`, and
 `FAKE_FSAC_VERSION_FAILS` makes it fail the way a broken install does. It is tested
 through a subprocess rather than an import, because the exit code and the stdout/stderr
-split are part of what the hook depends on.
+split are part of what the hook depends on. Its third hat, `FAKE_FSAC_TRANSCRIPT`,
+records every message it receives: the sync proxy's whole contract is what reaches the
+server and in which order, and only the server can testify to that, so the proxy tests
+drive real frames through a real subprocess pipeline and assert on the transcript.
 
-There is no integration leg any more and no .NET is needed: with the LSP client gone,
-nothing in this repo speaks to a real server. The whole suite runs in about a second.
+There is no integration leg and no .NET is needed: the suite never speaks to a real
+server — the proxy tests reach the stand-in as bare `fsautocomplete` on PATH, the same
+resolution production uses. The whole suite runs in about a second.
 
 **Mutation-test the health-check suite before trusting it.** A health check that always
 passes is the classic vacuous guard, and this suite has already shipped one: an earlier

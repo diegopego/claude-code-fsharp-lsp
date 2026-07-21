@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Check that Claude Code will be able to start the F# language server.
 
-The plugin is one file of configuration: `.lsp.json` tells Claude Code to run
-`fsautocomplete` for .fs/.fsi/.fsx and speak LSP to it over stdio. It launches
-the server as a **bare command**, so the only thing that decides whether F#
-works is whether `fsautocomplete` resolves on the PATH of the process that
+`.lsp.json` tells Claude Code to run `fsautocomplete` for .fs/.fsi/.fsx —
+launched through `fsac_sync_proxy.py`, the sibling script that keeps the
+server's buffers synced to the disk (its docstring carries the why). The
+server itself is a **bare command**, so the main thing that decides whether
+F# works is whether `fsautocomplete` resolves on the PATH of the process that
 launched Claude Code.
 
 This script asks exactly that question, the same way, and nothing more. It does
@@ -45,6 +46,7 @@ Exit codes: 0 healthy | 2 something is wrong (always 0 under --hook)
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -92,6 +94,30 @@ def check(project: str | None, hook: bool) -> int:
             else:
                 version = probe.stdout.strip().split("+")[0] or "unknown"
                 notes.append(f"fsautocomplete {version}  ({binary})")
+
+    # The server is launched through the sync proxy sitting beside this script.
+    # If that file is missing or does not parse, the launch dies before the LSP
+    # handshake — the same silent hang as a missing binary, so it is checked
+    # the same way: by what would actually run, not by mere presence.
+    proxy = Path(__file__).resolve().parent / "fsac_sync_proxy.py"
+    try:
+        compile(proxy.read_text(encoding="utf-8"), str(proxy), "exec")
+    except OSError as e:
+        problems.append(
+            f"fsac_sync_proxy.py is unreadable: {e}. The plugin launches "
+            f"fsautocomplete through it, so the LSP tool will hang. Reinstall "
+            f"the plugin.")
+    except SyntaxError as e:
+        problems.append(
+            f"fsac_sync_proxy.py does not parse (line {e.lineno}): {e.msg}. "
+            f"The plugin launches fsautocomplete through it, so the LSP tool "
+            f"will hang. Reinstall the plugin.")
+    else:
+        if os.environ.get("FSHARP_LSP_SYNC", "").lower() == "off":
+            notes.append("sync proxy present but OFF (FSHARP_LSP_SYNC=off): "
+                         "server buffers will go stale after edits")
+        else:
+            notes.append("sync proxy ok")
 
     # Diagnostic, never a gate. 'dotnet tool install -g fsautocomplete' cannot
     # succeed without an SDK, and FSAC ships net8.0/net9.0/net10.0 builds — so

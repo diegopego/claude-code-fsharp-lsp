@@ -61,6 +61,22 @@ The table lists the operations you call directly. `prepareCallHierarchy` — ano
 some clients need before the call-hierarchy operations; here `incomingCalls` and `outgoingCalls` take a position directly, so it
 never has to be called.
 
+## Answers track the disk
+
+Claude Code's own LSP client never tells the server about a write, so on any
+other language a server answer given after an edit can describe the file as it
+was when first queried. For F# this plugin closes that gap itself: it launches
+fsautocomplete through a sync layer that re-reads changed files from disk
+before every query — your own edits, a `sed`, a `git reset` are all visible to
+the next call. Trust the answer as a statement about the disk *now*, not about
+some earlier state of the session.
+
+Two consequences. After a *batch* of edits, the first query pays the re-check
+(about a second on top of the answer). And if `FSHARP_LSP_SYNC=off` is set in
+the environment, the sync layer is disabled and staleness returns — when an
+answer contradicts what you just read from the disk, check that variable
+before doubting the compiler.
+
 ## Renaming a symbol
 
 The `LSP` tool's operations are all reads, so renaming is the one thing it
@@ -137,9 +153,10 @@ needs no plugin file:
 fsautocomplete --version
 ```
 
-`.lsp.json` launches the server as a **bare command**, so PATH is the whole
-question: if the shell resolves it, so will Claude Code. `command not found` is
-the diagnosis, and the fix is to put the global tools directory (`~/.dotnet/tools`)
+The plugin's sync layer launches `fsautocomplete` as a **bare command**, so
+PATH is the whole question: if the shell resolves it, so will Claude Code.
+`command not found` is the diagnosis, and the fix is to put the global tools
+directory (`~/.dotnet/tools`)
 on the PATH of the process that launched Claude Code. A binary sitting in that
 directory but not on PATH is no use to anyone — do not report it as installed.
 

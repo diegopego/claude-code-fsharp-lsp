@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A stand-in for the fsautocomplete binary.
 
-It wears two hats, because two different tools drive it.
+It wears three hats, because three different tools drive it.
 
 `--version` is what check_fsharp_lsp.py needs: the check works by EXECUTING the
 binary rather than looking for it on disk, so testing it needs something
@@ -16,6 +16,14 @@ needs. It answers `initialize` and `shutdown`, and replies to
 FAKE_FSAC_RENAME — the JSON is used verbatim, so a test can script a hostile
 response as easily as a well-formed one. Absent that variable it answers null,
 which is FSAC's way of saying the symbol cannot be renamed.
+
+Set FAKE_FSAC_TRANSCRIPT to a path and every incoming message — notifications
+included — is appended there as one JSON line. That is what
+fsac_sync_proxy.py's tests assert against: the proxy's whole contract is *what
+reaches the server and in which order*, and only the server can testify to
+that. A body that does not parse as JSON is recorded as {"unparseable": true}
+rather than crashing, because a proxy forwards bytes it does not understand and
+a stand-in that dies on them would be testing its own fragility.
 
 The framing is real Content-Length framing rather than line-delimited JSON. A
 stand-in speaking a simpler protocol would let a client with broken framing pass
@@ -44,7 +52,14 @@ def read_message(stream):
     body = stream.read(length)
     if not body:
         return None
-    return json.loads(body)
+    try:
+        msg = json.loads(body)
+    except json.JSONDecodeError:
+        msg = {"unparseable": True}
+    if transcript := os.environ.get("FAKE_FSAC_TRANSCRIPT"):
+        with open(transcript, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(msg) + "\n")
+    return msg
 
 
 def write_message(stream, payload):

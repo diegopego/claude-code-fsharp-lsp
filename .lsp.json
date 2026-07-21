@@ -1,7 +1,7 @@
 {
   "fsharp": {
-    "command": "fsautocomplete",
-    "args": [],
+    "command": "python3",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/tools/fsac_sync_proxy.py", "fsautocomplete"],
     "extensionToLanguage": {
       ".fs": "fsharp",
       ".fsi": "fsharp",

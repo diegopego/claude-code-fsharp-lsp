@@ -130,6 +130,58 @@ def test_says_so_when_dotnet_is_absent(run_check, fsac_on_path, python_only_path
     assert "dotnet not on PATH" in result.stdout
 
 
+# ── the sync proxy the server is launched through ───────────────────────────
+#
+# The check runs beside fsac_sync_proxy.py and verifies it parses, because a
+# proxy that cannot start hangs the LSP tool exactly like a missing binary.
+# These tests copy the check into a directory of their own so the sibling can
+# be made broken or absent without touching the real one.
+
+def run_check_beside(tmp_path, proxy_text, args=(), fake_bin=None, extra_env=None):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    tools = Path(__file__).resolve().parent.parent / "tools"
+    clone = tmp_path / "clone"
+    clone.mkdir()
+    shutil.copy(tools / "check_fsharp_lsp.py", clone / "check_fsharp_lsp.py")
+    if proxy_text is not None:
+        (clone / "fsac_sync_proxy.py").write_text(proxy_text, encoding="utf-8")
+    env = dict(os.environ)
+    if fake_bin is not None:
+        env["PATH"] = os.pathsep.join([str(fake_bin), env.get("PATH", "")])
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        [sys.executable, str(clone / "check_fsharp_lsp.py"), *args],
+        capture_output=True, text=True, env=env, timeout=60)
+
+
+def test_flags_a_proxy_that_does_not_parse(tmp_path, fsac_on_path):
+    result = run_check_beside(tmp_path, "def broken(:\n", fake_bin=fsac_on_path())
+
+    assert result.returncode == 2
+    assert "fsac_sync_proxy.py does not parse" in result.stderr
+
+
+def test_flags_a_missing_proxy(tmp_path, fsac_on_path):
+    result = run_check_beside(tmp_path, None, fake_bin=fsac_on_path())
+
+    assert result.returncode == 2
+    assert "fsac_sync_proxy.py is unreadable" in result.stderr
+
+
+def test_reports_when_the_sync_valve_is_off(run_check):
+    """A user who forgot FSHARP_LSP_SYNC=off would otherwise report the stale
+    bug as having returned; the check is where that state has to surface."""
+    result = run_check(extra_env={"FSHARP_LSP_SYNC": "off"})
+
+    assert result.returncode == 0
+    assert "FSHARP_LSP_SYNC=off" in result.stdout
+
+
 # ── the hook must never fail the session ────────────────────────────────────
 
 def test_hook_mode_is_silent_when_healthy(run_check):
@@ -156,6 +208,16 @@ def test_hook_mode_survives_a_broken_binary_too(run_check):
 
     assert result.returncode == 0
     assert "fsharp-lsp:" in result.stdout
+    assert result.stderr.strip() == ""
+
+
+def test_hook_mode_survives_a_broken_proxy_too(tmp_path, fsac_on_path):
+    """Same contract, third distinct failure: the launch path itself."""
+    result = run_check_beside(tmp_path, "def broken(:\n", args=["--hook"],
+                              fake_bin=fsac_on_path())
+
+    assert result.returncode == 0
+    assert "fsac_sync_proxy.py does not parse" in result.stdout
     assert result.stderr.strip() == ""
 
 

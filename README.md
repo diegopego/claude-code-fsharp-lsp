@@ -79,12 +79,33 @@ on any `.fs` symbol. A type signature means it is live. See
 | file | what it does |
 |---|---|
 | `.lsp.json` | registers `fsautocomplete` for `.fs`, `.fsi`, `.fsx`. This is the plugin |
+| `tools/fsac_sync_proxy.py` | keeps the server's buffers synced to the disk — see [Answers track the disk](#answers-track-the-disk) |
 | `skills/fsharp-code-intelligence/` | teaches Claude which operation answers which question, and why a `grep` count is not a reference count |
 | `tools/check_fsharp_lsp.py` | health check, run automatically at session start |
 | `tools/rename_fsharp_symbol.py` | semantic rename — the one operation the `LSP` tool has no equivalent for |
 
 The snippets below are all real, captured against the `demo/` project in this
 repository — a small library-lending example you can clone and reproduce.
+
+## Answers track the disk
+
+Claude Code's interactive LSP client opens a file in the server the first time
+it is queried and never tells it about a write again — not even its own Edit
+tool's. Left alone, every answer after the first edit describes the past; a
+`git reset` makes it obvious, but ordinary editing hits it too, silently.
+
+So this plugin does not launch `fsautocomplete` directly: `.lsp.json` starts it
+through `tools/fsac_sync_proxy.py`, which re-reads changed files from disk
+before each query and hands the server the current text — plus a nudge to
+re-typecheck open dependents, which F#'s compile-order semantics require. Edits
+made by Claude, by `sed`, or by `git reset` are all visible to the very next
+call. The first query after a batch of edits pays the re-check (about a second);
+queries over an unchanged disk pay nothing.
+
+Set `FSHARP_LSP_SYNC=off` to reduce the proxy to a pure pass-through — the
+escape hatch for the day Claude Code's own client learns to sync, or for ruling
+the proxy out while diagnosing something. `check_fsharp_lsp.py` reports the
+valve's state, so a session with it off says so at startup.
 
 ## The refactoring loop
 
@@ -272,7 +293,7 @@ $ echo $?
 2
 ```
 
-Claude Code launches the server as a bare command, so a copy the shell cannot
+The plugin launches the server as a bare command, so a copy the shell cannot
 resolve is a copy the server cannot start. The check *executes* fsautocomplete
 rather than testing for a file, because a binary that exists but dies on startup
 produces the same silent hang. Pass a project directory and it also checks the
