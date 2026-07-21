@@ -20,8 +20,8 @@ lacks.
 | Title + intro paragraph | `.hero` (`h1`, `.lead`) | the hero framing is the site's own presentation |
 | — | `.roles` (You / Claude cards) | **site-only presentation**, adds no fact; keep |
 | Ionide callout + `No LSP server` | `.callout` in hero + its `.term` | |
-| What ships (four-file table) | `#what` `.parts` grid | |
-| The rename stories | `#refactor` `.steps` | the stepped-tutorial chrome is site-only presentation |
+| The rename stories | `#refactor` `.steps` | leads the body — the payoff before the anatomy; the stepped-tutorial chrome is site-only presentation |
+| What ships (four-file table) | `#what` `.parts` grid | follows `#refactor` on the site, though it precedes the stories in the README |
 | Prerequisites + install | `#install` `.steps` + `.copyrow`s | `fsac-version` → the "confirm it runs" term |
 | When F# is not working | `#trouble` | `check-healthy` and `check-broken` terms |
 

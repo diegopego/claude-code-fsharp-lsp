@@ -394,8 +394,8 @@
   <div class="wrap">
     <a class="brand" href="#top">fsharp<span>-lsp</span></a>
     <nav>
-      <a href="#what" data-optional>what it is</a>
       <a href="#refactor">refactoring</a>
+      <a href="#what" data-optional>what it is</a>
       <a href="#install">install</a>
       <a href="#trouble" data-optional>trouble</a>
       <a href="https://github.com/diegopego/claude-code-fsharp-lsp">github</a>
@@ -462,40 +462,9 @@
     </div>
   </section>
 
-  <section id="what">
-    <div class="wrap">
-      <p class="eyebrow">/// what this is</p>
-      <h2>Four files, one job each.</h2>
-      <p>
-        Register the server, teach Claude to use it, and speak up when the
-        environment cannot run it.
-      </p>
-
-      <div class="parts">
-        <div class="part">
-          <h3><code>.lsp.json</code></h3>
-          <p>Twenty-one lines registering fsautocomplete for <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code>. One warm server per session, answers immediate. You never invoke it.</p>
-        </div>
-        <div class="part">
-          <h3>the skill</h3>
-          <p>Teaches Claude which operation answers which question, how to rename a symbol safely, and why a <code>grep</code> count is not a reference count.</p>
-        </div>
-        <div class="part">
-          <h3><code>check_fsharp_lsp.py</code></h3>
-          <p>Runs at session start, silent unless something is wrong. It exists for one failure that reports nothing at all — see <a href="#trouble">below</a>.</p>
-        </div>
-        <div class="part">
-          <h3><code>rename_fsharp_symbol.py</code></h3>
-          <p>Semantic rename. The <code>LSP</code> tool is all reads, so this is the one operation it has no equivalent for — and the only reason a second tool exists here at all.</p>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
   <section id="refactor">
     <div class="wrap">
-      <p class="eyebrow">/// the loop</p>
+      <p class="eyebrow">/// the refactoring loop</p>
       <h2>One rename, from question to proof.</h2>
       <p>
         Claude Code's <code>LSP</code> tool is entirely reads — nine operations, not one
@@ -669,6 +638,37 @@
     </div>
   </section>
 
+  <section id="what">
+    <div class="wrap">
+      <p class="eyebrow">/// what this is</p>
+      <h2>Four files, one job each.</h2>
+      <p>
+        Register the server, teach Claude to use it, and speak up when the
+        environment cannot run it.
+      </p>
+
+      <div class="parts">
+        <div class="part">
+          <h3><code>.lsp.json</code></h3>
+          <p>Twenty-one lines registering fsautocomplete for <code>.fs</code>, <code>.fsi</code> and <code>.fsx</code>. One warm server per session, answers immediate. You never invoke it.</p>
+        </div>
+        <div class="part">
+          <h3>the skill</h3>
+          <p>Teaches Claude which operation answers which question, how to rename a symbol safely, and why a <code>grep</code> count is not a reference count.</p>
+        </div>
+        <div class="part">
+          <h3><code>check_fsharp_lsp.py</code></h3>
+          <p>Runs at session start, silent unless something is wrong. It exists for one failure that reports nothing at all — see <a href="#trouble">below</a>.</p>
+        </div>
+        <div class="part">
+          <h3><code>rename_fsharp_symbol.py</code></h3>
+          <p>Semantic rename. The <code>LSP</code> tool is all reads, so this is the one operation it has no equivalent for — and the only reason a second tool exists here at all.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
   <section id="install">
     <div class="wrap">
       <p class="eyebrow">/// install</p>
@@ -729,8 +729,8 @@
       <p class="eyebrow">/// troubleshooting</p>
       <h2>Three failures. Only one of them is silent.</h2>
       <p>
-        Read the message before reaching for anything. Two of the three say what is
-        wrong, and running a health check on them wastes a minute.
+        Read the message first: two of the three name the problem outright. The third
+        cannot — so the plugin does it for you.
       </p>
 
       <div class="term">
@@ -751,11 +751,12 @@
       </div>
 
       <p>
-        The third reports nothing because the server dies before the LSP handshake
-        completes, so the tool waits rather than failing. The plugin runs
-        <code>check_fsharp_lsp.py</code> at every session start to catch it, printing
-        nothing unless something is wrong. Run by hand it says what it found — this is a
-        working install, with the demo project passed as the optional argument:
+        The third is the trap: the server dies before the LSP handshake, so Claude
+        Code's <code>LSP</code> tool waits instead of erroring — a hang with no reason.
+        A plugin can't turn that into a clean failure (the wait is Claude Code's), but it
+        can refuse to let it pass silently. <code>check_fsharp_lsp.py</code> runs at every
+        session start and, when the binary won't start, prints the cause and the fix —
+        almost always PATH. Here it is by hand on a working install:
       </p>
 
             <div class="term">
@@ -793,11 +794,10 @@
             </div>
       <p class="note">
         Claude Code launches the server as a bare command, so a copy the shell cannot
-        resolve is a copy the server cannot start. The check reports every line rather
-        than stopping at the first failure, and it <em>executes</em> fsautocomplete
-        rather than testing for a file, because a binary that exists but dies on startup
-        produces the same silent hang. Pass a project directory and it also checks the
-        directory holds a restored <code>.fsproj</code>.
+        resolve cannot start. The check <em>executes</em> fsautocomplete rather than
+        testing for a file — a binary that exists but dies on startup produces the same
+        silent hang — and reports every line instead of stopping at the first. Pass a
+        project directory and it also checks for a restored <code>.fsproj</code>.
       </p>
     </div>
   </section>
