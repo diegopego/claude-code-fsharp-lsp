@@ -33,7 +33,7 @@ lives only on the site must land in the README first, bound to evidence:
 | was site-only | new README home | evidence id |
 |---|---|---|
 | `fsautocomplete --version` output | Prerequisites | `fsac-version` |
-| healthy check (four `ok` lines) | When F# is not working | `check-healthy` |
+| healthy check (all `ok` lines) | When F# is not working | `check-healthy` |
 | broken check (`FAIL … PATH`, exit `2`) | When F# is not working | `check-broken` |
 | `findReferences` block | the rename story | `findreferences-renew` |
 | dry-run rename block | the rename story | `rename-dryrun` |
@@ -55,17 +55,17 @@ file:
 **Primary story — rename `renew` to `renewLoan`:**
 - Prompt: "rename `renew` to `renewLoan`."
 - Grep first, honestly: anchor the word (`grep -rnw renew demo | sort`) so the
-  substring and comment noise never enters the count. It *still* returns four
-  hits, because the demo defines two functions named `renew` — `Loan.renew` and
-  `Member.renew` (a membership renewal). Two of the four are the wrong binding,
-  and no regex separates identically spelled symbols. The strawman to avoid is a
-  naive `grep -rn renew` whose only "false positives" are `renewalLimit` and
-  comments — noise a competent search discards. The real point needs a homograph.
+  substring and comment noise never enters the count. It *still* returns more
+  hits than the rename has real references, because the demo defines a second
+  function also named `renew` — `Loan.renew` and the unrelated `Member.renew` (a
+  membership renewal). Some of those hits are the wrong binding, and no regex
+  separates identically spelled symbols. The strawman to avoid is a naive
+  `grep -rn renew` whose only "false positives" are `renewalLimit` and comments —
+  noise a competent search discards. The real point needs a homograph.
 - Compiler: `findReferences` at the `Loan.renew` declaration
-  (`findreferences-renew`) → the two loan sites only, dropping the two
-  `Member.renew` hits grep returned, and crossing into the Consumer project; then
-  the dry run (`rename-dryrun`) touching only those two, leaving `Member.renew`
-  alone.
+  (`findreferences-renew`) → the loan sites only, dropping the `Member.renew` hits
+  grep returned, and crossing into the Consumer project; then the dry run
+  (`rename-dryrun`) touching only those, leaving `Member.renew` alone.
 - Action: `--apply --expect N` with N from `findReferences`, then `dotnet build`
   (`build-fs0039`) — or the recorded gap if the SDK was absent.
 
@@ -81,5 +81,5 @@ return type before a change; the read-only path.
   Prose may be reworded freely; facts may not be invented.
 - Prefer the compiler's word over an approximation: a `grep` count is not a
   reference count. The README proves it — an anchored, airtight regex still
-  returns four hits where two are a different function also named `renew`, and
-  only the compiler separates them.
+  returns more hits than there are real references, some of them a different
+  function also named `renew`, and only the compiler separates them.
