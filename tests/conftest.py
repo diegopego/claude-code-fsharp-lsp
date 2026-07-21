@@ -80,8 +80,8 @@ def fsharp_project(tmp_path):
     """A throwaway workspace holding one F# file.
 
     Built by the test rather than checked in. A fixture project whose only
-    purpose is to sit in the repository being slightly wrong is the thing 2.0.0
-    deleted, and there is no reason to grow another.
+    purpose is to sit in the repository being slightly wrong is the kind of thing
+    this repo deleted with the query CLI, and there is no reason to grow another.
     """
     project = tmp_path / "SampleProject"
     project.mkdir()

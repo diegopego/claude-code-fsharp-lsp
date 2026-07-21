@@ -32,7 +32,7 @@ concludes they have a fourth unknown problem.
 **The `LSP` tool's operations are all reads.** That is why
 `tools/rename_fsharp_symbol.py` exists and why it is not a duplicate of anything: it is
 the write end of the same workflow, not a rival to it. The distinction is load-bearing —
-the CLI removed in 2.0.0 died of *overlapping* the `LSP` tool, so anything living here
+the query CLI this repo removed died of *overlapping* the `LSP` tool, so anything living here
 must fill a gap the `LSP` tool cannot reach at all. Verified 2026-07-20 against
 fsautocomplete 0.83.0: renaming `double` produced 4 edits across 2 files, left the
 unrelated `doubleTrouble` alone, and the project built clean.
@@ -41,7 +41,7 @@ unrelated `doubleTrouble` alone, and the project built clean.
 the running session. Enabling does not bring it back until the session restarts. A test
 that enables and checks in the same session produces a false negative.
 
-## History: the query CLI, removed in 2.0.0
+## History: the query CLI, since removed
 
 Through 1.1.1 this plugin also shipped `tools/fsharp_lsp.py`, an 861-line standalone LSP
 client offering `references`, `symbols` and `diagnostics` against any project on disk. It
@@ -66,7 +66,7 @@ reintroduced by accident:
 
 Recoverable from commit `887342b` ("chore: release 1.1.1") if it is ever wanted
 back — note there is no `v1.1.1` tag; tagging stopped at `v1.0.1`. The `rename` it also
-carried, commented out, shipped in 2.1.0 as its own single-purpose tool rather than as a
+carried, commented out, since shipped as its own single-purpose tool rather than as a
 subcommand; two of its defects only surfaced on the way (see that commit). Nothing else
 in that file is wanted.
 
@@ -79,7 +79,7 @@ is a dev dependency and must never be imported by either.
 
 **`rename_fsharp_symbol.py` renames a symbol and never grows a second job.** No
 `references`, no `symbols`, no `diagnostics` — the `LSP` tool answers those, and
-*overlapping it* is precisely what killed the CLI removed in 2.0.0. A need that does not
+*overlapping it* is precisely what killed the query CLI this repo removed. A need that does not
 fit "rename one symbol" is a different tool with a different name, not a flag on this one.
 
 **Dry run stays the default there, and every guard keeps a mutation test.** An

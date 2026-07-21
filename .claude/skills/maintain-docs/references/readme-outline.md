@@ -24,23 +24,6 @@ Keep this order so structure cannot drift:
    `check-broken`.
 10. Tests · Names disambiguated · License.
 
-## First-pass restructure: pull site-only facts into the README
-
-The landing page derives one-way from the README and may never add a fact the
-README lacks. So on the first regeneration, every concrete transcript that today
-lives only on the site must land in the README first, bound to evidence:
-
-| was site-only | new README home | evidence id |
-|---|---|---|
-| `fsautocomplete --version` output | Prerequisites | `fsac-version` |
-| healthy check (all `ok` lines) | When F# is not working | `check-healthy` |
-| broken check (`FAIL … PATH`, exit `2`) | When F# is not working | `check-broken` |
-| `findReferences` block | the rename story | `findreferences-renew` |
-| dry-run rename block | the rename story | `rename-dryrun` |
-| `dotnet build` → `FS0039` | the rename story's close | `build-fs0039` |
-
-Prose-only descriptions become prose **plus** the evidence block they describe.
-
 ## The stories (section 7)
 
 Each story follows one shape, and every output block is preceded by its

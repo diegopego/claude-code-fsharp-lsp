@@ -12,7 +12,7 @@ running the current skill?) is a human/Claude check, described in SKILL.md.
 
 Why content hashes and not version numbers: a local install copies the files
 into a version-keyed cache dir, and you can reinstall at the same version. A
-version check would see 2.1.0 == 2.1.0 while the bytes differ — the exact
+version check would see matching version numbers while the bytes differ — the exact
 false-green this exists to prevent.
 
 Standard library only. Exit: 0 identical | 2 stale or absent.

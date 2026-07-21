@@ -17,7 +17,7 @@ plugin, and only makes sense inside this repository.
 Claude's *behaviour* in a documentation story — which tool it reaches for, what
 it narrates — comes from the **installed** skill, not the working tree. Capturing
 from a stale install describes a tool that may no longer exist (this repo shipped
-`fsharp_lsp.py` through 1.1.1 and removed it in 2.0.0). So before any capture, we
+`fsharp_lsp.py` through 1.1.1 and has since removed it). So before any capture, we
 prove the installed plugin is the working tree.
 
 ## Phase 1 — gate (both signals must pass)
