@@ -57,12 +57,13 @@ confident answer about the wrong symbol.
 | what does this call? | `outgoingCalls` |
 | implementations of an interface or abstract member | `goToImplementation` |
 
-That is eight of the tool's nine operations. The ninth, `prepareCallHierarchy`, is a precursor some clients need before the call
-operations; here `incomingCalls` and `outgoingCalls` take a position directly, so it never has to be called.
+The table lists the operations you call directly. `prepareCallHierarchy` — another operation the tool exposes — is a precursor
+some clients need before the call-hierarchy operations; here `incomingCalls` and `outgoingCalls` take a position directly, so it
+never has to be called.
 
 ## Renaming a symbol
 
-The `LSP` tool's nine operations are all reads, so renaming is the one thing it
+The `LSP` tool's operations are all reads, so renaming is the one thing it
 cannot do. `tools/rename_fsharp_symbol.py` is the other half of the same
 workflow — read with the tool, write with this — not an alternative to it.
 
