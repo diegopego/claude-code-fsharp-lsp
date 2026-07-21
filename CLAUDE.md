@@ -109,8 +109,6 @@ repo moves on, and the copy — not the original — is what users install.
 github-sourced marketplaces automatically, so an unbumped version is how a stale copy
 survives unnoticed.
 
-**No PyPI package.** One published artifact.
-
 ## Running things
 
 ```bash
@@ -121,6 +119,12 @@ python3 tools/check_fsharp_lsp.py --help
 
 `pytest` is not on PATH as a bare command; always invoke it as `python3 -m pytest`.
 
+The `Makefile` is the workflow entrypoint — run `make help` for targets grouped by
+phase. Note `make test` does more than bare `python3 -m pytest`: it first syncs the
+working tree into the installed plugin and gates docs consistency; `make verify` is
+the pre-release gate, and `make release LEVEL=…` / `make publish` carry the release
+discipline the Hard constraints describe.
+
 `dotnet` needs no environment setup — it resolves from PATH. Do **not** export
 `DOTNET_ROOT` or prepend a specific .NET install to PATH; see below for why that can
 silently switch SDKs.
@@ -129,7 +133,7 @@ silently switch SDKs.
 
 - **No particular .NET SDK is required**, by this repo or by users. The suite no longer
   builds any F# project — see Testing approach.
-- **Requires `fsautocomplete` on PATH.** Install it with `dotnet tool install -g fsautocomplete`, then make sure the global tools directory (`~/.dotnet/tools` on Linux and macOS) is on the PATH of the process that launches Claude Code — a login shell rc file is not always enough. Verify with `fsautocomplete --version` — that is the whole test, and it is what `check_fsharp_lsp.py` runs. **Nothing honours `FSAC_PATH` any more**: `.lsp.json` launches the server as a bare command and cannot honour it, so a check that did would be able to pass while the server fails.
+- **Requires `fsautocomplete` on PATH** — without it the `LSP` tool hangs with no diagnosis. See README for install; verify with `fsautocomplete --version` (what `check_fsharp_lsp.py` runs). **Nothing honours `FSAC_PATH` any more**: `.lsp.json` launches the server as a bare command, so a check that honoured it could pass while the server fails.
 - **Never export `DOTNET_ROOT` and never reorder PATH to favour one .NET install.** Multiple SDKs commonly coexist on one machine (a distro package, a user install under `~/.dotnet`, and on WSL the Windows one). Both `dotnet` and `fsautocomplete` already resolve correctly from PATH; forcing either variable can silently change which SDK builds the project, which is a confusing failure to diagnose.
 
 ## Testing approach
@@ -147,11 +151,6 @@ passes is the classic vacuous guard, and this suite has already shipped one: an 
 version pointed at the stand-in through `FSAC_PATH`, so *no test entered the PATH
 resolution branch at all* — deleting the lookup outright left the suite green, while the
 real check reported healthy on the exact failure it exists for.
-
-Verified 2026-07-20, after that was fixed, by breaking six things in turn and watching
-the relevant tests fail each time, then restoring to green: the PATH lookup replaced by a
-`~/.dotnet/tools` fallback (the original bug), `which()` never failing, the SDK version
-parse, the `*/*.fsproj` glob, the hook's exit code, and `FSAC_PATH` being honoured again.
 
 When you add a branch here, add the mutation with it. A branch no test enters is a branch
 the next refactor can delete for free.
