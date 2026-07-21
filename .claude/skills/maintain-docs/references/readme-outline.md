@@ -21,7 +21,9 @@ Keep this order so structure cannot drift:
 7. **The refactoring stories** — the heart (see below).
 8. Diagnostics — build, `--no-incremental`.
 9. When F# is not working — the three-failures table, showing `check-healthy` and
-   `check-broken`.
+   `check-broken`. The `LoadedProjects` row names the fix, not only the failure:
+   relaunch from the directory whose subtree holds the `.fsproj`/`.sln` (not a
+   namespace folder under it), and validate it with `check_fsharp_lsp.py`.
 10. Tests · Names disambiguated · License.
 
 ## The stories (section 7)

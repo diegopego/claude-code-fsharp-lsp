@@ -242,7 +242,7 @@ for anything:
 | what you see | what it means |
 |---|---|
 | `No LSP server available for file type: .fs` | no server is registered — the plugin is not installed or not enabled |
-| `Couldn't find <file> in LoadedProjects` | a server **is** running; that file belongs to a project outside the directory Claude Code was launched in. Open a session there |
+| `Couldn't find <file> in LoadedProjects` | a server **is** running, but the directory it loaded does not hold that file's project — Claude Code was launched below or beside it. Relaunch from the directory whose subtree holds the `.fsproj`/`.sln` (not a namespace folder under it); `check_fsharp_lsp.py` on it confirms the choice in a second |
 | a hang, or silence | the server is registered but the binary will not start — almost always the PATH problem above |
 
 Only the third is silent, and the plugin runs `check_fsharp_lsp.py` at every
