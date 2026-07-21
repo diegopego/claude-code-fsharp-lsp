@@ -97,8 +97,9 @@ rename loads every referencing project. Often **not** the repo root, and never a
 namespace folder *below* the project: aim it at `Domain/` while the `.fsproj`
 sits a level up and fsautocomplete loads nothing, then answers `Couldn't find
 <file> in LoadedProjects` — and only after a slow start. Confirm the directory in
-about a second first with `python3 tools/check_fsharp_lsp.py PROJECT`, which lists
-the restored project(s) it finds there and turns that slow, opaque failure into an
+about a second first with `python3 "${CLAUDE_SKILL_DIR}/../../tools/check_fsharp_lsp.py" PROJECT`
+(a bare `tools/…` is relative to *your* project, not the plugin), which lists the
+restored project(s) it finds there and turns that slow, opaque failure into an
 instant named one. Positions are 1-based, as everywhere else here.
 
 **Read the exit code rather than assuming success.** Every non-zero one means
@@ -125,7 +126,7 @@ reaching for anything:
 | what you see | what it means |
 |---|---|
 | `No LSP server available for file type: .fs` | no server is registered — this plugin is not installed or not enabled |
-| `Couldn't find <file> in LoadedProjects` | a server **is** running; that file belongs to a project outside the directory Claude Code was launched in. Open a session there, or work from the build output |
+| `Couldn't find <file> in LoadedProjects` | a server **is** running, but the workspace root it loaded does not hold that file's project — Claude Code was launched below or beside it, or a passed `PROJECT` points at a namespace folder *under* the project instead of the directory whose subtree holds the `.fsproj`/`.sln`. Relaunch from (or pass) that directory; `check_fsharp_lsp.py` on it names the mistake in a second. Or work from the build output |
 | a hang, or silence | the server is registered but the binary will not start — almost always `~/.dotnet/tools` missing from the PATH of the process that launched Claude Code |
 
 Only the third is silent. The plugin runs its health check at session start, so
