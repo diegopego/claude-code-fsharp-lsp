@@ -1,7 +1,10 @@
 # Design: the `maintain-docs` skill
 
 **Date:** 2026-07-20
-**Status:** approved, pre-implementation
+**Status:** implemented 2026-07-20 (see `docs/plans/2026-07-20-maintain-docs-skill.md`).
+This document has since been reconciled with the shipped code; where the built
+demo or skill diverged from the original proposal, the notes below flag it — the
+divergences are the `renew` homograph and the three helper scripts.
 
 A project-local Claude Code skill that regenerates this repo's `README.md` and
 `docs/index.html` from **real, captured tool output** rather than from prose the
@@ -97,20 +100,28 @@ sees.
 
 ```
 demo/
+  LibraryLending.slnx                # solution over both projects (as built)
   LibraryLending/
     LibraryLending.fsproj          # library: Book, Member, Loan
     Book.fs
-    Member.fs
+    Member.fs                      # Member — and Member.renew, the homograph (as built)
     Loan.fs
   LibraryLending.Consumer/
-    LibraryLending.Consumer.fsproj # references LibraryLending, calls renew
-    Renewals.fs
+    LibraryLending.Consumer.fsproj # references LibraryLending
+    Renewals.fs                    # calls Loan.renew across the project boundary
+    Memberships.fs                 # calls Member.renew across the project boundary (as built)
 ```
 
 Compile order in the `.fsproj` is `Book.fs`, `Member.fs`, `Loan.fs` (F#'s order
 is semantic — `Loan` opens the other two).
 
-### Source (proposed; implementation may refine names, not roles)
+### Source (as built; the original proposal is preserved, with one addition)
+
+> **Divergence from the proposal:** the built demo added a second, genuine
+> `renew` — `Member.renew` — turning the single-`renew` decoy into a *homograph*.
+> `Book.fs` and `Loan.fs` are as proposed; `Member.fs` below carries the
+> addition, and the consumer gained `Memberships.fs` to give it a cross-project
+> use site. This is a role added beyond the proposal, not just a renamed one.
 
 `Book.fs`
 ```fsharp
@@ -129,9 +140,16 @@ let isAvailable (book: Book) = book.CopiesOnShelf > 0
 ```fsharp
 module LibraryLending.Member
 
+open System
+
 type Member =
     { Name: string
-      LoansAllowed: int }
+      LoansAllowed: int
+      MembershipExpires: DateOnly }
+
+/// Renew a membership: push its expiry date out by a year.
+let renew (today: DateOnly) (m: Member) =
+    { m with MembershipExpires = today.AddYears 1 }
 ```
 
 `Loan.fs`
@@ -164,16 +182,17 @@ let renew (today: DateOnly) (loan: Loan) =
                   RenewalsUsed = loan.RenewalsUsed + 1 }
 ```
 
-`Renewals.fs` (in the consumer project) calls `renew`, giving it a use site
-outside the defining project.
+`Renewals.fs` calls `Loan.renew` and `Memberships.fs` calls `Member.renew` (both
+in the consumer project), giving each `renew` a use site outside its defining
+project.
 
 ### The decoys and the stories they unlock — all naturally occurring
 
 | decoy / shape | story it makes real |
 |---|---|
-| `renew` beside `renewalLimit` and `RenewalsUsed` | `grep renew` over-counts; `findReferences` on `renew` returns only the real sites |
-| renaming `renew` → `renewLoan` | leaves `renewalLimit` / `RenewalsUsed` untouched — semantic, not textual (the `doubleTrouble` role, occurring naturally) |
-| `renew` used from `LibraryLending.Consumer` | `findReferences` crosses a project boundary a library-dir `grep` never sees |
+| two genuine `renew` functions — `Loan.renew` and `Member.renew` — a homograph | `grep renew` cannot tell them apart; `findReferences` / rename on one leaves the other untouched — semantic, not textual (the `doubleTrouble` role, occurring naturally) |
+| `renew` beside `renewalLimit` and `RenewalsUsed` | `grep renew` also over-counts on substring matches the compiler never confuses with the function |
+| each `renew` used from `LibraryLending.Consumer` (`Renewals.fs`, `Memberships.fs`) | `findReferences` crosses a project boundary a library-dir `grep` never sees |
 | `isOverdue : DateOnly -> Loan -> bool` | a `hover` whose type signature is worth reading |
 
 ---
@@ -334,13 +353,15 @@ an evidence ID:
 > plugin's `LSP`/rename output, verbatim from evidence) → **What Claude does with
 > the gap.**
 
-**Primary story — rename `renew` to `renewLoan`:**
-- **Prompt:** "rename `renew` to `renewLoan`."
-- **Grep first (Claude's reflex):** `grep -rn renew demo/` hits `renew`,
-  `renewalLimit`, `RenewalsUsed` — the count is wrong, and the doc shows why.
-- **Compiler (this plugin):** `findReferences` at the declaration → true sites,
-  crossing into the Consumer project; then the dry-run rename showing the same
-  count.
+**Primary story — rename `Loan.renew` to `renewLoan`:**
+- **Prompt:** "rename `renew` to `renewLoan`" — and note there are *two* `renew`s.
+- **Grep first (Claude's reflex):** `grep -rn renew demo/` hits both `renew`
+  functions (`Loan.renew`, `Member.renew`), their consumer call sites, and the
+  `renewalLimit` / `RenewalsUsed` substrings — the count is wrong, and worse, it
+  cannot tell the target `renew` from the homograph. The doc shows why.
+- **Compiler (this plugin):** `findReferences` at the `Loan.renew` declaration →
+  its true sites only, crossing into the Consumer project and leaving
+  `Member.renew` alone; then the dry-run rename showing the same count.
 - **Action:** `--apply --expect N` with N from `findReferences`, then `dotnet
   build` → the `FS0039` proof (or the recorded gap if the SDK was absent).
 
@@ -395,10 +416,19 @@ paths are kept as-is, since they are reproducible.
 ```
 .claude/skills/maintain-docs/
   SKILL.md                       # three-phase workflow, the gate, the two hard rules
+  check_plugin_current.py        # Phase-1 gate, on-disk half: installed plugin == working tree, by content hash (as built)
+  refresh_plugin.py              # the on-failure reconcile: mirrors the working tree into the active install, no version bump (as built)
+  bump_version.py                # release helper: minimal in-place bump of version in plugin.json (as built)
   references/readme-outline.md   # section outline + voice rules
   references/site-section-map.md # README→HTML map, omissions, line-class transform
   references/evidence-capture.md # exact capture commands + restore discipline
 ```
+
+> The three `.py` helpers were not in the original layout — the proposal
+> described the gate narratively (Phase 1) and left the reconcile steps as prose.
+> The build materialised them as scripts; `check_plugin_current.py` is the gate
+> the "On failure" section below calls for, and `refresh_plugin.py` is its
+> inverse. `bump_version.py` serves `CLAUDE.md`'s every-release-bumps rule.
 
 Invoked as `/maintain-docs`.
 
