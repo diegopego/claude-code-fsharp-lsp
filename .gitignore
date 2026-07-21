@@ -9,8 +9,6 @@ demo/**/obj/
 
 # Internal working documents — machine paths, private project names,
 # and notes written for a private audience. Kept locally, never committed.
-HANDOFF.md
-ROADMAP.md
 docs/plans/
 
 # Local tooling and editor state. Ignore .claude/ contents but keep the

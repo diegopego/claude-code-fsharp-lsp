@@ -1,7 +1,7 @@
 """conflict_check.py warns when fsharp-lsp is installed from more than one source
 (marketplace). Two installs register the .fs LSP server twice and spawn two
-fsautocomplete processes — a real failure this repo has seen (HANDOFF.md: one
-FSAC reached 5.4 GB). install-dev-plugin runs this first and refuses on a conflict.
+fsautocomplete processes — a real failure this repo has seen: one FSAC reached
+5.4 GB. install-dev-plugin runs this first and refuses on a conflict.
 
 A conflict is 2+ distinct marketplaces for the same plugin name. The same plugin
 under two SCOPES of one marketplace is not a conflict — it is one registration."""
