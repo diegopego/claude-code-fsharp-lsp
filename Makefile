@@ -5,7 +5,7 @@
 # a bare command, per CLAUDE.md). Doc regeneration is Claude-driven (the
 # maintain-docs skill), so it is NOT a make target — `make docs` prints how.
 #
-# install-local is a prerequisite of test/verify/docs so the on-disk installed
+# sync-plugin is a prerequisite of test/verify/docs so the on-disk installed
 # plugin always mirrors this working tree. It is a safe no-op when the plugin is
 # not installed, so these targets work on a fresh clone too.
 
@@ -16,21 +16,28 @@ DEMO         := demo/LibraryLending.slnx
 VERSION_FILE := .claude-plugin/plugin.json
 
 .DEFAULT_GOAL := help
-.PHONY: help install-local test build-demo check verify docs \
+.PHONY: help use-dev-plugin sync-plugin test build-demo check verify docs \
         version release publish clean
 
 help:  ## List targets, grouped by workflow phase
 	@awk 'BEGIN{FS=":.*?## "} \
 		/^##@/{printf "\n\033[1m%s\033[0m\n", substr($$0,5); next} \
-		/^[a-zA-Z_-]+:.*?## /{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' \
+		/^[a-zA-Z_-]+:.*?## /{printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' \
 		$(MAKEFILE_LIST)
 
 ##@ Develop
-install-local:  ## Sync this working tree into the installed plugin (safe no-op if none)
+use-dev-plugin:  ## Configure THIS project to use the working tree as the plugin (local scope)
+	$(PYTHON) $(SKILL)/conflict_check.py
+	claude plugin marketplace add "$(CURDIR)" || claude plugin marketplace update claude-code-fsharp-lsp
+	claude plugin install fsharp-lsp@claude-code-fsharp-lsp --scope local
+	@echo ""
+	@echo "Installed at local scope (this project, just you). Restart the session to load it."
+
+sync-plugin:  ## Sync this working tree into the installed plugin (safe no-op if none)
 	$(PYTHON) $(SKILL)/refresh_plugin.py
 
 ##@ Test
-test: install-local  ## Sync the plugin, then run the Python suite (also gates docs consistency)
+test: sync-plugin  ## Sync the plugin, then run the Python suite (also gates docs consistency)
 	$(PYTHON) -m pytest
 
 build-demo:  ## Build the F# demo project (the documentation instrument)
@@ -39,10 +46,10 @@ build-demo:  ## Build the F# demo project (the documentation instrument)
 check:  ## Is the environment usable? (fsautocomplete on PATH, SDKs)
 	$(PYTHON) tools/check_fsharp_lsp.py
 
-verify: install-local check build-demo test  ## Sync + check + build-demo + test
+verify: sync-plugin check build-demo test  ## Sync + check + build-demo + test
 
 ##@ Document
-docs: install-local  ## Sync the plugin, then how to regenerate README + landing page
+docs: sync-plugin  ## Sync the plugin, then how to regenerate README + landing page
 	@echo "Plugin synced into the install. Restart the session so it loads, then"
 	@echo "in Claude Code run:  /maintain-docs"
 	@echo ""

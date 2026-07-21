@@ -60,7 +60,7 @@ def installed_copies(cache_root: Path) -> list[Path]:
 RECONCILE = (
     "Reconcile before capturing:\n"
     "  Fast path (already installed once): push this tree into the install with\n"
-    "    python3 .claude/skills/maintain-docs/refresh_plugin.py   (or: make refresh)\n"
+    "    python3 .claude/skills/maintain-docs/refresh_plugin.py   (or: make sync-plugin)\n"
     "  First time: add a local marketplace pointing at this working tree, then\n"
     "    /plugin install fsharp-lsp@<that-marketplace>\n"
     "  Either way: RESTART the session (enabling does not take effect until then),\n"
