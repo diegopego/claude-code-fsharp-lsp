@@ -99,10 +99,12 @@ def test_duplicate_scopes_sync_the_shared_path_once(tmp_path):
     assert (r.stdout + r.stderr).count("synced") == 1
 
 
-def test_nonzero_when_no_install_is_found(tmp_path):
+def test_zero_with_note_when_no_install_is_found(tmp_path):
+    """No install is not an error: install-local is a prerequisite of `make
+    test`, which must work on a machine that never installed the plugin."""
     wt = _working_tree(tmp_path / "repo", "fresh")
     installed = tmp_path / "installed_plugins.json"
     installed.write_text(json.dumps({"plugins": {}}), encoding="utf-8")
     r = _run(["--working-tree", str(wt), "--installed-json", str(installed)])
-    assert r.returncode != 0
-    assert "no installed" in (r.stdout + r.stderr).lower()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "nothing to refresh" in (r.stdout + r.stderr).lower()

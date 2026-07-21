@@ -22,7 +22,6 @@ import shutil
 from pathlib import Path
 
 EXIT_OK = 0
-EXIT_NO_INSTALL = 1
 
 # Exactly what the plugin ships and needs at runtime — nothing else is pushed.
 PLUGIN_FILES = (".lsp.json",)
@@ -87,9 +86,12 @@ def main() -> int:
 
     dests = [args.dest] if args.dest else active_install_paths(args.installed_json)
     if not dests:
-        print(f"no installed fsharp-lsp found in {args.installed_json}. "
-              f"Install it once from a local marketplace first.")
-        return EXIT_NO_INSTALL
+        # Not an error: this runs as a prerequisite of `make test`, which must
+        # work on a machine where the plugin was never installed (fresh clone,
+        # first use, CI). Nothing to sync is a fine outcome.
+        print(f"no installed fsharp-lsp found in {args.installed_json}; "
+              f"nothing to refresh.")
+        return EXIT_OK
 
     for dest in dests:
         if not dest.is_dir():
@@ -98,8 +100,7 @@ def main() -> int:
         changed = sync_into(args.working_tree, dest)
         print(f"  synced {', '.join(changed)} -> {dest}")
 
-    print("RESTART the session so the changes load, then confirm with "
-          "check_plugin_current.py.")
+    print("Restart any open Claude session to load the changes.")
     return EXIT_OK
 
 
