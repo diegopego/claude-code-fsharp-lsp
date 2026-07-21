@@ -16,22 +16,30 @@ DEMO         := demo/LibraryLending.slnx
 VERSION_FILE := .claude-plugin/plugin.json
 
 .DEFAULT_GOAL := help
-.PHONY: help use-dev-plugin sync-plugin test build-demo check verify docs \
-        version release publish clean
+.PHONY: help install-dev-plugin uninstall-dev-plugin sync-plugin test build-demo \
+        check verify docs version release publish clean
 
 help:  ## List targets, grouped by workflow phase
 	@awk 'BEGIN{FS=":.*?## "} \
 		/^##@/{printf "\n\033[1m%s\033[0m\n", substr($$0,5); next} \
-		/^[a-zA-Z_-]+:.*?## /{printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' \
+		/^[a-zA-Z_-]+:.*?## /{printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' \
 		$(MAKEFILE_LIST)
 
 ##@ Develop
-use-dev-plugin:  ## Configure THIS project to use the working tree as the plugin (local scope)
+install-dev-plugin:  ## Configure THIS project to use the working tree as the plugin (local scope)
 	$(PYTHON) $(SKILL)/conflict_check.py
 	claude plugin marketplace add "$(CURDIR)" || claude plugin marketplace update claude-code-fsharp-lsp
 	claude plugin install fsharp-lsp@claude-code-fsharp-lsp --scope local
 	@echo ""
 	@echo "Installed at local scope (this project, just you). Restart the session to load it."
+
+uninstall-dev-plugin:  ## Uninstall the dev plugin from THIS machine (all scopes)
+	@for s in local project user; do \
+		claude plugin uninstall fsharp-lsp@claude-code-fsharp-lsp --scope $$s -y 2>/dev/null \
+			&& echo "  uninstalled scope=$$s" || true; \
+	done
+	@echo ""
+	@echo "Removed the dev plugin. Restart the session so it takes effect."
 
 sync-plugin:  ## Sync this working tree into the installed plugin (safe no-op if none)
 	$(PYTHON) $(SKILL)/refresh_plugin.py

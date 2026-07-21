@@ -3,7 +3,7 @@
 
 Two installs of the same LSP plugin register the .fs server twice and spawn two
 fsautocomplete processes — a real failure this repo has seen (HANDOFF.md: two F#
-plugins active at once, one FSAC reaching 5.4 GB). `make use-dev-plugin` runs
+plugins active at once, one FSAC reaching 5.4 GB). `make install-dev-plugin` runs
 this FIRST and refuses to add a third copy on top of a conflict.
 
 A conflict is 2+ distinct marketplaces for one plugin name. The same plugin under
